@@ -3,8 +3,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI 生產線廚房控制台 | AI Kitchen Control Center</title>
-  <!-- 內嵌雲端設定槽（可透過網頁內「匯出已綁定設定 HTML」自動寫入，無需手動改 Code） -->
-  <script id="embedded-cloud-config" type="application/json">{"firebaseConfig":{"apiKey":"AIzaSyAVuDwCJq79SESYCEVfxWNaQ9Me35vGkTo","authDomain":"ai-production-line-mgt.firebaseapp.com","projectId":"ai-production-line-mgt","storageBucket":"ai-production-line-mgt.firebasestorage.app","messagingSenderId":"1026406616564","appId":"1:1026406616564:web:ba76ffec6bbb19172cfda1"},"ownerEmail":"w.cheung815@gmail.com"}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Sans+HK:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -1246,6 +1244,11 @@
     <button class="nav-tab" data-tab="cloud" onclick="window.app.switchTab('cloud')">☁️ Google 雲端設定精靈</button>
   </nav>
 
+  <div id="cloudSetupHint" class="sample-banner" style="display:none;max-width:1440px;margin:14px auto 0;">
+    <span>☁️ <strong>呢部瀏覽器尚未設定 Firebase。</strong>金鑰只會儲存在 localStorage，唔會寫入 HTML，以免 GitHub 再掃到。未設定前可以用本地模式；要雲端同步就去設定頁貼上 firebaseConfig 再儲存。</span>
+    <button class="btn btn-primary btn-sm" onclick="window.app.switchTab('cloud')">前往雲端設定</button>
+  </div>
+
   <!-- 主內容區 -->
   <main class="main-container" id="mainView"></main>
 
@@ -1507,7 +1510,7 @@ D:\Projects\shared-prompts"></textarea>
 
   <script>
     (function() {
-      // 在任何動態渲染前先保存乾淨 HTML 模板，以便「一鍵匯出已綁定雲端設定嘅 index.html」功能運作
+      // 在任何動態渲染前先保存乾淨 HTML 模板，以便下載不含 Firebase 金鑰嘅 index.html
       const CLEAN_ROOT_CLONE = document.documentElement.cloneNode(true);
 
       const STORAGE_KEY_DATA = 'ai_kitchen_local_db_v1';
@@ -1674,22 +1677,28 @@ D:\Projects\shared-prompts"></textarea>
         };
       }
 
-      // 讀取內嵌或本地儲存的雲端設定
+      // 只從呢部瀏覽器嘅 localStorage 讀取雲端設定，避免金鑰出現喺 HTML 來源
       function loadCloudConfig() {
         try {
-          const embeddedEl = document.getElementById('embedded-cloud-config');
-          if (embeddedEl && embeddedEl.textContent.trim()) {
-            const parsed = JSON.parse(embeddedEl.textContent.trim());
-            if (parsed && parsed.firebaseConfig && parsed.firebaseConfig.apiKey) {
-              return parsed;
+          const saved = localStorage.getItem(STORAGE_KEY_CLOUD);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed === 'object') {
+              return {
+                firebaseConfig: parsed.firebaseConfig || null,
+                ownerEmail: parsed.ownerEmail || ''
+              };
             }
           }
         } catch (e) {}
-        try {
-          const saved = localStorage.getItem(STORAGE_KEY_CLOUD);
-          if (saved) return JSON.parse(saved);
-        } catch (e) {}
         return { firebaseConfig: null, ownerEmail: '' };
+      }
+
+      function updateCloudSetupHint() {
+        const el = document.getElementById('cloudSetupHint');
+        if (!el) return;
+        const hasCfg = !!(state.cloudCfg && state.cloudCfg.firebaseConfig && state.cloudCfg.firebaseConfig.apiKey);
+        el.style.display = hasCfg ? 'none' : 'flex';
       }
 
       function loadPrefs() {
@@ -2350,6 +2359,7 @@ D:\Projects\shared-prompts"></textarea>
 
       // 主渲染入口
       function renderAll() {
+        updateCloudSetupHint();
         applyPrefsUI();
         updateSyncBadge();
         renderHeaderStats();
@@ -3157,7 +3167,7 @@ service cloud.firestore {
             <div class="section-header">
               <div>
                 <div class="section-title">☁️ Google 帳號登入 + 私人雲端 Database 設定精靈（電腦小白免改 Code 版）</div>
-                <p style="font-size:13.5px;color:var(--text-secondary);margin-top:4px;">完全唔需要自己打開 HTML 改任何程式碼！跟住下面 4 步貼上設定，再撳「下載已綁定雲端設定嘅 index.html」擺上 GitHub 就永久搞掂！</p>
+                <p style="font-size:13.5px;color:var(--text-secondary);margin-top:4px;">Firebase 設定請喺下面貼上並儲存到呢部瀏覽器嘅 localStorage，唔會寫入 HTML，避免 GitHub Secret scanning 再掃到金鑰。每個瀏覽器第一次使用都要貼一次。</p>
               </div>
               ${state.cloudConnected && state.currentUser ? `
                 <button class="btn btn-danger btn-sm" onclick="window.app.signOutGoogle()">登出 Google (${escapeHtml(state.currentUser.email)})</button>
@@ -3182,11 +3192,11 @@ service cloud.firestore {
               </div>
               <div class="form-group">
                 <label class="form-label">直接貼上從 Firebase 複製嘅 <code>firebaseConfig</code> 內容：</label>
-                <textarea id="cfgFirebaseRaw" rows="6" class="form-textarea mono" placeholder="直接成段貼入嚟就得，例如：&#10;const firebaseConfig = {&#10;  apiKey: &quot;AIzaSy...&quot;,&#10;  authDomain: &quot;xxx.firebaseapp.com&quot;,&#10;  projectId: &quot;xxx&quot;,&#10;  appId: &quot;1:123...&quot;&#10;};">${cfg ? escapeHtml(JSON.stringify(cfg, null, 2)) : ''}</textarea>
+                <textarea id="cfgFirebaseRaw" rows="6" class="form-textarea mono" placeholder="直接成段貼入嚟就得，例如：&#10;const firebaseConfig = {&#10;  apiKey: &quot;YOUR_API_KEY&quot;,&#10;  authDomain: &quot;your-project.firebaseapp.com&quot;,&#10;  projectId: &quot;your-project&quot;,&#10;  appId: &quot;YOUR_APP_ID&quot;&#10;};">${cfg ? escapeHtml(JSON.stringify(cfg, null, 2)) : ''}</textarea>
               </div>
               <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
                 <button class="btn btn-primary" onclick="window.app.saveCloudSetup()">💾 儲存雲端設定</button>
-                <button class="btn btn-idle" onclick="window.app.exportConfiguredHtml()">📦 一鍵下載已綁定設定嘅 index.html（直接擺上 GitHub！）</button>
+                <button class="btn btn-idle" onclick="window.app.exportConfiguredHtml()">📦 下載不含金鑰嘅 index.html（可上傳 GitHub）</button>
                 ${cfg ? `<button class="btn btn-danger btn-sm" onclick="window.app.clearCloudSetup()">清除雲端設定</button>` : ''}
               </div>
             </div>
@@ -3201,7 +3211,7 @@ service cloud.firestore {
             <div class="step-card">
               <div style="font-weight:700;margin-bottom:6px;"><span class="step-num">4</span> 擺上 GitHub Repository 並加入授權網域</div>
               <ol style="padding-left:20px;font-size:13.5px;color:var(--text-secondary);display:flex;flex-direction:column;gap:5px;">
-                <li>將上面第 2 步下載嘅 <strong><code>index.html</code></strong> Upload 上你嘅 GitHub Repository。</li>
+                <li>將不含金鑰嘅 <strong><code>index.html</code></strong> Upload 上你嘅 GitHub Repository。Firebase 設定唔會寫入檔案；喺網站打開後，返去第 2 步貼上並儲存即可。</li>
                 <li>喺 GitHub Repository 撳 <strong>Settings → 左邊 Pages</strong>，喺 Branch 揀 <code>main</code> → Save，等 1 分鐘就會得到你嘅專屬網址（例如 <code>https://你的帳號.github.io/你的repo名/</code>）。</li>
                 <li>最後一步：去 Firebase Console → <strong>Authentication → Settings → Authorized domains → Add domain</strong>，將你嘅 GitHub 網域（例如 <code>你的帳號.github.io</code>）加落去。之後無論喺電腦定手機打開網址，撳一下 Google 登入就即時同步！</li>
               </ol>
@@ -3244,7 +3254,7 @@ service cloud.firestore {
 
           <div class="panel-card">
             <div class="section-title">📦 資料匯入 / 匯出</div>
-            <p style="font-size:13px;color:var(--text-secondary);margin:6px 0 12px;">資料唔一定要填得齊：匯入時缺欄位會自動補預設值，亦唔會覆蓋呢個檔案入面已綁定嘅 Firebase 雲端設定。</p>
+            <p style="font-size:13px;color:var(--text-secondary);margin:6px 0 12px;">資料唔一定要填得齊：匯入時缺欄位會自動補預設值。Firebase 設定只存在呢部瀏覽器嘅 localStorage，匯入廚房資料唔會改到佢。</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-primary" onclick="window.app.openExportModal()">📦 匯出資料 / 設定</button>
               <button class="btn btn-secondary" onclick="window.app.pickImportJson()">📥 匯入 JSON</button>
@@ -3260,6 +3270,7 @@ service cloud.firestore {
         if (!txt) return null;
         try {
           const j = JSON.parse(txt);
+          if (j && j.firebaseConfig && j.firebaseConfig.apiKey) return j.firebaseConfig;
           if (j && j.apiKey && j.projectId) return j;
         } catch (e) {}
 
@@ -4216,37 +4227,15 @@ service cloud.firestore {
           state.cloudCfg = { firebaseConfig: parsedCfg, ownerEmail: email };
           localStorage.setItem(STORAGE_KEY_CLOUD, JSON.stringify(state.cloudCfg));
           state.bypassAuthLock = false;
-          showToast('✅ 已儲存雲端設定！');
+          showToast('✅ 已將 Firebase 設定儲存到呢部瀏覽器嘅 localStorage，唔會寫入 HTML。');
           renderAll();
           initFirebaseIfConfigured();
           return true;
         },
         exportConfiguredHtml() {
-          const emailEl = document.getElementById('cfgOwnerEmail');
-          const rawEl = document.getElementById('cfgFirebaseRaw');
-          if (emailEl && rawEl && rawEl.value.trim()) {
-            const parsed = parseFirebaseConfigInput(rawEl.value);
-            if (!parsed) {
-              showToast('⚠️ 請先貼上正確嘅 firebaseConfig 先再匯出檔案！');
-              return;
-            }
-            state.cloudCfg = { firebaseConfig: parsed, ownerEmail: emailEl.value.trim() };
-            localStorage.setItem(STORAGE_KEY_CLOUD, JSON.stringify(state.cloudCfg));
-          }
-
-          if (!state.cloudCfg || !state.cloudCfg.firebaseConfig) {
-            showToast('⚠️ 請先喺第 2 步貼上 Firebase 設定！');
-            return;
-          }
-
-          const safeJson = JSON.stringify(state.cloudCfg)
-            .replace(/</g, '\\u003c')
-            .replace(/>/g, '\\u003e');
           const exportRoot = CLEAN_ROOT_CLONE.cloneNode(true);
-          const cfgSlot = exportRoot.querySelector('#embedded-cloud-config');
-          if (cfgSlot) {
-            cfgSlot.textContent = safeJson;
-          }
+          const hintEl = exportRoot.querySelector('#cloudSetupHint');
+          if (hintEl) hintEl.style.display = 'none';
           const mainEl = exportRoot.querySelector('#mainView');
           if (mainEl) mainEl.innerHTML = '';
           const statsEl = exportRoot.querySelector('#headerStats');
@@ -4264,7 +4253,7 @@ service cloud.firestore {
           a.download = 'index.html';
           a.click();
           URL.revokeObjectURL(url);
-          showToast('📦 已下載 index.html！直接 Upload 上你嘅 GitHub Repository 就用得！');
+          showToast('📦 已下載不含 Firebase 金鑰嘅 index.html。upload 上 GitHub 之後，喺瀏覽器打開並喺設定頁貼上 firebaseConfig 再儲存。');
         },
         updateRulesPreview(val) {
           const email = (val || '').trim() || '請先在上方填寫你的Gmail@gmail.com';
