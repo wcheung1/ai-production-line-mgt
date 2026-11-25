@@ -1058,6 +1058,139 @@
       flex-direction: column;
       gap: 4px;
     }
+
+    /* ---- v2: queues, timeline, paste AI, parallel jobs ---- */
+    .job-block {
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .job-block + .job-block { margin-top: 2px; }
+    .slot-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px dashed rgba(16, 185, 129, 0.35);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tool-queue-box, .mini-timeline-box {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      background: var(--bg-elevated);
+    }
+    .tool-queue-title, .mini-timeline-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .queue-item, .mini-tl-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 0;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 12.5px;
+    }
+    .queue-item:first-of-type, .mini-tl-item:first-of-type { border-top: none; padding-top: 0; }
+    .queue-item-name { font-weight: 600; }
+    .queue-item-actions, .mini-tl-meta {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .reset-meta {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .timeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border-left: 2px solid rgba(249, 115, 22, 0.45);
+      margin: 8px 0 0 8px;
+      padding-left: 16px;
+    }
+    .timeline-item {
+      position: relative;
+      padding: 0 0 18px 4px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -21px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      border: 2px solid var(--bg-surface);
+      box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.4);
+    }
+    .timeline-item.type-start::before { background: #f97316; }
+    .timeline-item.type-complete::before { background: #10b981; }
+    .timeline-item.type-feedback_rework::before { background: #a855f7; }
+    .timeline-item.type-ready_for_qa::before { background: #eab308; }
+    .timeline-time {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .timeline-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .timeline-detail {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+    }
+    .timeline-ai {
+      margin-top: 6px;
+      font-size: 12.5px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      color: var(--text-main);
+    }
+    .paste-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 720px) {
+      .paste-grid { grid-template-columns: 1fr; }
+    }
+    .modal-card.wide { max-width: 760px; }
+    .ai-hint {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+    }
+    .ai-busy[disabled] { opacity: 0.65; cursor: wait; }
   </style>
 </head>
 <body>
@@ -1095,6 +1228,9 @@
       <div class="header-actions">
         <button class="icon-btn" id="soundToggleBtn" onclick="window.app.toggleSound()" title="夠鐘試味提示鈴聲">🔔 響鈴: 開</button>
         <button class="icon-btn" id="themeToggleBtn" onclick="window.app.toggleTheme()" title="切換深淺色主題">🌙 主題</button>
+        <button class="icon-btn" onclick="window.app.openExportModal()" title="匯出 CSV 或完整 JSON">📦 匯出資料</button>
+        <button class="icon-btn" onclick="window.app.pickImportJson()" title="由 JSON 備份匯入">📥 匯入資料</button>
+        <button class="icon-btn" onclick="window.app.openBuiltinAiModal()" title="內置 AI 分析、潤色、總結">✨ 內置 AI</button>
         <div id="syncStatusBadge" class="sync-badge local" onclick="window.app.switchTab('cloud')">💻 載入中...</div>
       </div>
     </div>
@@ -1104,6 +1240,7 @@
   <nav class="nav-bar" id="navBar">
     <button class="nav-tab active" data-tab="kitchen" onclick="window.app.switchTab('kitchen')">🔥 廚房爐頭總覽 <span class="badge-count" id="navCountStoves">0</span></button>
     <button class="nav-tab" data-tab="projects" onclick="window.app.switchTab('projects')">📋 專案紀錄與搜尋 <span class="badge-count" id="navCountProjects">0</span></button>
+    <button class="nav-tab" data-tab="timeline" onclick="window.app.switchTab('timeline')">🗓️ 完成時間線 <span class="badge-count" id="navCountTimeline">0</span></button>
     <button class="nav-tab" data-tab="analytics" onclick="window.app.switchTab('analytics')">📊 算力效益檢討</button>
     <button class="nav-tab" data-tab="tools" onclick="window.app.switchTab('tools')">🛠️ 訂閱工具加減</button>
     <button class="nav-tab" data-tab="cloud" onclick="window.app.switchTab('cloud')">☁️ Google 雲端設定精靈</button>
@@ -1124,7 +1261,14 @@
         <div class="form-group">
           <label class="form-label">1. 分配去邊個 AI 爐頭（工具）？</label>
           <select id="pmToolId" class="form-select"></select>
-          <span class="form-hint">揀「🧺 先擺入備料待煮區」可暫存排隊，等有爐頭閒置時一鍵落鍋。</span>
+          <span class="form-hint">可先放入共用備料區，或直接指定某個爐頭。爐頭有空位就開火；平行位已滿就自動排入嗰個爐頭自己嘅隊列。</span>
+        </div>
+        <div class="form-group" id="pmAssignModeWrap">
+          <label class="form-label">落鍋方式（指定爐頭時）</label>
+          <select id="pmAssignMode" class="form-select">
+            <option value="auto" selected>🔥 有空位即開火，滿則排入呢個爐頭隊列</option>
+            <option value="queue_only">📥 只排入呢個爐頭隊列（暫時唔開火）</option>
+          </select>
         </div>
 
         <div class="form-group">
@@ -1231,8 +1375,27 @@ D:\Projects\shared-prompts"></textarea>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">算力計算 / 重置備註</label>
+          <label class="form-label">算力計算 / 重置備註（可選）</label>
           <input type="text" id="tmResetNote" class="form-input" placeholder="例如：每 5 小時重置額度 / 每月 1 號重置字數">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">下次配額自動歸零時間（可選）</label>
+            <input type="datetime-local" id="tmResetAt" class="form-input">
+            <span class="form-hint">到時會自動將已用配額歸 0。</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">重置週期</label>
+            <select id="tmResetPeriod" class="form-select">
+              <option value="monthly" selected>每月重複（同日同時）</option>
+              <option value="none">只重置一次（之後再手動設定）</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">同時可平行進行嘅工作數量</label>
+          <input type="number" id="tmMaxParallel" class="form-input" min="1" max="12" step="1" value="1">
+          <span class="form-hint">預設 1（同一時間一項任務）。如果呢個工具可以同時開多個對話／任務，可以加大。</span>
         </div>
       </div>
       <div class="modal-footer">
@@ -1241,6 +1404,103 @@ D:\Projects\shared-prompts"></textarea>
       </div>
     </div>
   </div>
+
+
+  <!-- 匯出資料選擇 -->
+  <div id="exportModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📦 匯出資料</div>
+        <button class="icon-btn btn-sm" onclick="window.app.closeModal('exportModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="form-hint">CSV 方便用 Excel 睇專案表；JSON 可以完整備份／搬去另一部電腦。內置 AI 嘅 API Key 預設唔會放入「可分享」備份。</p>
+        <button class="btn btn-secondary" onclick="window.app.exportCSV(); window.app.closeModal('exportModal');">📊 匯出 Excel CSV</button>
+        <button class="btn btn-primary" onclick="window.app.exportJSONBackup('data');">💾 只匯出廚房資料（工具 / 任務 / 時間線）</button>
+        <button class="btn btn-secondary" onclick="window.app.exportJSONBackup('settings');">⚙️ 匯出資料 + 設定（不含 API Key，適合分享或備份介面偏好）</button>
+        <button class="btn btn-secondary" onclick="window.app.exportJSONBackup('settings_with_key');">🔐 匯出資料 + 設定（含 API Key，只供自己私人備份）</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.app.closeModal('exportModal')">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 貼上 Prompt / 回覆 + 內置 AI 總結 -->
+  <div id="pasteAiModal" class="modal-backdrop">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <div class="modal-title" id="pasteAiModalTitle">📋 貼上 Prompt / 回覆</div>
+        <button class="icon-btn btn-sm" onclick="window.app.closeModal('pasteAiModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="paToolId">
+        <div class="form-group">
+          <label class="form-label">套用到邊個任務？（可選）</label>
+          <select id="paProjectId" class="form-select"></select>
+          <span class="form-hint">唔想打字都可以：總結完可以一鍵開一個新任務，用摘要做名稱。</span>
+        </div>
+        <div class="paste-grid">
+          <div class="form-group">
+            <label class="form-label">A. 貼你俾呢個工具嘅 Prompt</label>
+            <textarea id="paPrompt" rows="7" class="form-textarea" placeholder="直接貼上你已經複製好嘅 prompt，唔使重新打字…"></textarea>
+            <button class="btn btn-primary btn-sm" id="paSumPromptBtn" onclick="window.app.summarizePastedPrompt()">✨ 一鍵總結呢個任務目的</button>
+            <label class="form-label" style="margin-top:8px;">任務摘要（可再手動改）</label>
+            <textarea id="paTaskSummary" rows="4" class="form-textarea" placeholder="內置 AI 會將目的寫成短摘要，你都可以自己改或手寫。"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">B. 貼呢個工具嘅 AI 回覆</label>
+            <textarea id="paResponse" rows="7" class="form-textarea" placeholder="把工具嘅 response 貼呢度，分析完咗未、去到邊個階段…"></textarea>
+            <button class="btn btn-primary btn-sm" id="paAnalyzeBtn" onclick="window.app.analyzePastedResponse()">✨ 一鍵分析進度 / 完咗未</button>
+            <label class="form-label" style="margin-top:8px;">進度分析同完成摘要（可再手動改）</label>
+            <textarea id="paResultSummary" rows="4" class="form-textarea" placeholder="例如：已完成初稿，仲差本地驗證；或已完成可上菜。"></textarea>
+          </div>
+        </div>
+        <div id="paAiHint" class="ai-hint"></div>
+      </div>
+      <div class="modal-footer" style="flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="window.app.closeModal('pasteAiModal')">取消</button>
+        <button class="btn btn-secondary" onclick="window.app.savePastedAi(false)">💾 儲存摘要到任務</button>
+        <button class="btn btn-idle" onclick="window.app.savePastedAi(true)">✅ 儲存並標記完成上菜</button>
+        <button class="btn btn-primary" onclick="window.app.savePastedAiAsNew()">🧺 用摘要開一個新任務</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 內置 AI 通用面板 -->
+  <div id="builtinAiModal" class="modal-backdrop">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <div class="modal-title">✨ 內置 AI 助手</div>
+        <button class="icon-btn btn-sm" onclick="window.app.closeModal('builtinAiModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="baCfgHint" class="ai-hint"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="baKitchenBtn" onclick="window.app.runBuiltinAi('kitchen')">🍳 分析現時廚房情況並俾意見</button>
+          <button class="btn btn-secondary btn-sm" onclick="window.app.switchTab('cloud'); window.app.closeModal('builtinAiModal');">⚙️ 前往設定 API</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">貼上要潤色 / 分析 / 問意見嘅文字（可選）</label>
+          <textarea id="baInput" rows="6" class="form-textarea" placeholder="例如貼一段草稿叫佢潤色，或者問而家應該派咩任務俾閒置爐頭…"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="baPolishBtn" onclick="window.app.runBuiltinAi('polish')">✍️ 潤色呢段文字</button>
+          <button class="btn btn-secondary btn-sm" id="baAdviceBtn" onclick="window.app.runBuiltinAi('advice')">💡 根據呢段文字俾意見</button>
+          <button class="btn btn-secondary btn-sm" id="baSummarizeBtn" onclick="window.app.runBuiltinAi('summarize')">📝 總結呢段文字</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AI 回覆（可複製或再改）</label>
+          <textarea id="baOutput" rows="8" class="form-textarea" placeholder="結果會出現喺呢度…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.app.closeModal('builtinAiModal')">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="importJsonFile" accept="application/json,.json" style="display:none" onchange="window.app.importJSONBackup(event)">
 
   <!-- Toast 通知容器 -->
   <div id="toastContainer" class="toast-container"></div>
@@ -1253,6 +1513,7 @@ D:\Projects\shared-prompts"></textarea>
       const STORAGE_KEY_DATA = 'ai_kitchen_local_db_v1';
       const STORAGE_KEY_CLOUD = 'ai_kitchen_cloud_cfg_v1';
       const STORAGE_KEY_PREFS = 'ai_kitchen_prefs_v1';
+      const STORAGE_KEY_AI = 'ai_kitchen_builtin_ai_v1';
 
       const nowTs = () => Date.now();
 
@@ -1443,6 +1704,8 @@ D:\Projects\shared-prompts"></textarea>
         db: createStarterState(),
         cloudCfg: loadCloudConfig(),
         prefs: loadPrefs(),
+        aiCfg: loadAiCfg(),
+        timelineFilterTool: 'all',
         activeTab: 'kitchen',
         projSearch: '',
         projFilterStatus: 'all',
@@ -1464,11 +1727,7 @@ D:\Projects\shared-prompts"></textarea>
         if (localRaw) {
           const parsed = JSON.parse(localRaw);
           if (parsed && Array.isArray(parsed.tools)) {
-            state.db = {
-              tools: parsed.tools || [],
-              projects: parsed.projects || [],
-              logs: parsed.logs || []
-            };
+            state._pendingDb = parsed;
           }
         } else {
           localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(state.db));
@@ -1560,6 +1819,313 @@ D:\Projects\shared-prompts"></textarea>
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
       }
 
+      function defaultAiCfg() {
+        return { apiKey: '', baseUrl: 'https://api.openai.com', model: 'gpt-4o-mini', endpointPath: '/v1/chat/completions' };
+      }
+
+      function loadAiCfg() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY_AI);
+          if (saved) return Object.assign(defaultAiCfg(), JSON.parse(saved) || {});
+        } catch (e) {}
+        return defaultAiCfg();
+      }
+
+      function saveAiCfg(cfg) {
+        const merged = Object.assign(defaultAiCfg(), cfg || {});
+        localStorage.setItem(STORAGE_KEY_AI, JSON.stringify(merged));
+        state.aiCfg = merged;
+      }
+
+      function isBuiltinAiConfigured() {
+        const c = state.aiCfg || loadAiCfg();
+        return !!(c.apiKey && String(c.apiKey).trim() && c.baseUrl && String(c.baseUrl).trim() && c.model && String(c.model).trim());
+      }
+
+      function aiConfigHintText() {
+        if (isBuiltinAiConfigured()) {
+          const c = state.aiCfg || loadAiCfg();
+          return '內置 AI 已設定（型號：' + (c.model || '-') + '）。一鍵分析後仍然可以手動改摘要。';
+        }
+        return '尚未設定內置 AI。你仍然可以貼上 Prompt／回覆同手寫短註，然後去「☁️ Google 雲端設定精靈」頁填 API Key、Base URL 同 Model。';
+      }
+
+      function toDatetimeLocalValue(ts) {
+        if (!ts) return '';
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return '';
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+
+      function parseDatetimeLocal(val) {
+        if (!val) return null;
+        const t = new Date(val).getTime();
+        return isNaN(t) ? null : t;
+      }
+
+      function addMonthsTs(ts, n) {
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return null;
+        const day = d.getDate();
+        d.setMonth(d.getMonth() + n);
+        if (d.getDate() < day) d.setDate(0);
+        return d.getTime();
+      }
+
+      function nextQueueOrder(toolId) {
+        const items = getToolQueuedProjects(toolId);
+        if (!items.length) return 1;
+        return Math.max.apply(null, items.map(p => Number(p.queueOrder) || 0)) + 1;
+      }
+
+      function normalizeTool(t, idx) {
+        if (!t || typeof t !== 'object') return null;
+        if (!t.id) t.id = 'tool_' + nowTs() + '_' + Math.random().toString(36).slice(2, 5);
+        if (t.name == null || String(t.name).trim() === '') t.name = '未命名爐頭';
+        if (t.icon == null || t.icon === '') t.icon = '🤖';
+        if (t.workflow == null) t.workflow = '';
+        if (t.monthlyCostHKD == null || t.monthlyCostHKD === '') t.monthlyCostHKD = 0;
+        if (t.quotaUsedPct == null || t.quotaUsedPct === '') t.quotaUsedPct = 0;
+        t.quotaUsedPct = Math.min(100, Math.max(0, Number(t.quotaUsedPct) || 0));
+        if (t.quotaResetLabel == null) t.quotaResetLabel = '';
+        if (t.quotaResetAt === undefined) t.quotaResetAt = null;
+        if (t.quotaResetPeriod !== 'none') t.quotaResetPeriod = 'monthly';
+        let mp = Math.round(Number(t.maxParallel));
+        if (!mp || mp < 1) mp = 1;
+        t.maxParallel = Math.min(12, mp);
+        if (t.cooldownUntil === undefined) t.cooldownUntil = null;
+        if (t.lastActiveEndedAt === undefined) t.lastActiveEndedAt = null;
+        if (t.archived == null) t.archived = false;
+        if (t.order == null) t.order = idx + 1;
+        return t;
+      }
+
+      function normalizeProject(p, idx) {
+        if (!p || typeof p !== 'object') return null;
+        if (!p.id) p.id = 'proj_' + nowTs() + '_' + Math.random().toString(36).slice(2, 6);
+        if (p.name == null || String(p.name).trim() === '') p.name = '未命名任務';
+        if (!p.status) p.status = p.toolId ? 'running' : 'queued';
+        if (p.directories && !Array.isArray(p.directories)) p.directories = [];
+        if (!Array.isArray(p.directories)) p.directories = [];
+        if (p.progressNote == null) p.progressNote = '';
+        if (!p.cookMode) p.cookMode = 'braise';
+        if (p.estimatedMinutes == null || p.estimatedMinutes === '') p.estimatedMinutes = 30;
+        if (p.accumulatedMinutes == null) p.accumulatedMinutes = 0;
+        if (!p.qaChecklist || typeof p.qaChecklist !== 'object') p.qaChecklist = { refined: false, verified: false, deployed: false };
+        if (!Array.isArray(p.feedbackLogs)) p.feedbackLogs = [];
+        if (p.feedbackCount == null) p.feedbackCount = p.feedbackLogs.length || 0;
+        if (p.queueOrder == null) p.queueOrder = idx + 1;
+        if (p.pastedPrompt == null) p.pastedPrompt = '';
+        if (p.pastedResponse == null) p.pastedResponse = '';
+        if (p.aiTaskSummary == null) p.aiTaskSummary = '';
+        if (p.aiResultSummary == null) p.aiResultSummary = '';
+        if (p.aiStageNote == null) p.aiStageNote = '';
+        return p;
+      }
+
+      function normalizeLog(l) {
+        if (!l || typeof l !== 'object') return null;
+        if (!l.id) l.id = 'log_' + nowTs() + '_' + Math.random().toString(36).slice(2, 6);
+        if (!l.at) l.at = nowTs();
+        if (!l.type) l.type = 'note';
+        if (l.detail == null) l.detail = '';
+        if (l.aiSummary == null) l.aiSummary = '';
+        if (l.durationMinutes == null) l.durationMinutes = 0;
+        return l;
+      }
+
+      function normalizeDb(raw) {
+        const src = raw && typeof raw === 'object' ? raw : {};
+        const tools = Array.isArray(src.tools) ? src.tools.map((t, i) => normalizeTool(t, i)).filter(Boolean) : [];
+        const projects = Array.isArray(src.projects) ? src.projects.map((p, i) => normalizeProject(p, i)).filter(Boolean) : [];
+        const logs = Array.isArray(src.logs) ? src.logs.map(normalizeLog).filter(Boolean) : [];
+        return { tools, projects, logs };
+      }
+
+      function applyLoadedDb(raw) {
+        state.db = normalizeDb(raw);
+      }
+
+      function getToolActiveProjects(toolId) {
+        return (state.db.projects || []).filter(p => p.toolId === toolId && (p.status === 'running' || p.status === 'review' || p.status === 'paused'));
+      }
+
+      function getToolQueuedProjects(toolId) {
+        return (state.db.projects || [])
+          .filter(p => p.toolId === toolId && p.status === 'queued')
+          .sort((a, b) => (a.queueOrder || 0) - (b.queueOrder || 0) || (a.startedAt || 0) - (b.startedAt || 0));
+      }
+
+      function getSharedPrepProjects() {
+        return (state.db.projects || []).filter(p => p.status === 'queued' && !p.toolId);
+      }
+
+      function getMaxParallel(tool) {
+        return Math.max(1, Math.min(12, Math.round(Number(tool && tool.maxParallel) || 1)));
+      }
+
+      function getFreeSlots(tool, exceptId) {
+        if (!tool) return 0;
+        const used = getToolActiveProjects(tool.id).filter(p => p.id !== exceptId).length;
+        return Math.max(0, getMaxParallel(tool) - used);
+      }
+
+      function projectDisplayName(p) {
+        return (p && p.name && String(p.name).trim()) ? p.name : '未命名任務';
+      }
+
+      function applyProjectToTool(p, tool, mode) {
+        const now = nowTs();
+        const alreadyActiveHere = p.toolId === tool.id && (p.status === 'running' || p.status === 'review' || p.status === 'paused');
+        const free = getFreeSlots(tool, p.id);
+        p.preferredToolId = tool.id;
+        p.toolId = tool.id;
+        p.isSample = false;
+        tool.cooldownUntil = null;
+        if (alreadyActiveHere && mode !== 'queue_only') return p.status;
+        if (mode === 'queue_only' || free <= 0) {
+          if (p.status === 'running') {
+            const elapsed = (now - (p.currentRunStartedAt || p.startedAt || now)) / 60000;
+            p.accumulatedMinutes = Math.round((p.accumulatedMinutes || 0) + elapsed);
+          }
+          p.status = 'queued';
+          p.currentRunStartedAt = null;
+          if (p.queueOrder == null) p.queueOrder = nextQueueOrder(tool.id);
+          return 'queued';
+        }
+        p.status = 'running';
+        p.currentRunStartedAt = now;
+        if (!p.startedAt) p.startedAt = now;
+        return 'running';
+      }
+
+      function checkQuotaResets(opts) {
+        opts = opts || {};
+        const now = nowTs();
+        const fired = [];
+        (state.db.tools || []).forEach(t => {
+          if (!t.quotaResetAt) return;
+          let guard = 0;
+          let did = false;
+          while (t.quotaResetAt && now >= t.quotaResetAt && guard++ < 48) {
+            t.quotaUsedPct = 0;
+            t.cooldownUntil = null;
+            did = true;
+            if ((t.quotaResetPeriod || 'monthly') === 'monthly') {
+              const next = addMonthsTs(t.quotaResetAt, 1);
+              t.quotaResetAt = next && next > t.quotaResetAt ? next : null;
+            } else {
+              t.quotaResetAt = null;
+              break;
+            }
+          }
+          if (did) fired.push(t.name || '未命名爐頭');
+        });
+        if (fired.length) {
+          persistState();
+          if (!opts.silent) {
+            showToast('♻️ 已按重置時間將配額歸零：' + fired.join('、'));
+            const ae = document.activeElement;
+            const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT');
+            if (opts.rerender && !typing) renderAll();
+            else renderHeaderStats();
+          }
+        }
+        return fired.length > 0;
+      }
+
+      async function callBuiltinAI(systemPrompt, userPrompt) {
+        const cfg = state.aiCfg || loadAiCfg();
+        if (!cfg.apiKey || !String(cfg.apiKey).trim()) {
+          const err = new Error('NOT_CONFIGURED');
+          throw err;
+        }
+        const base = String(cfg.baseUrl || '').trim().replace(/\/$/, '');
+        const path = String(cfg.endpointPath || '/v1/chat/completions').trim() || '/v1/chat/completions';
+        const url = base + (path.startsWith('/') ? path : '/' + path);
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 45000);
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + String(cfg.apiKey).trim()
+            },
+            body: JSON.stringify({
+              model: cfg.model,
+              temperature: 0.3,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ]
+            }),
+            signal: ctrl.signal
+          });
+          if (!res.ok) {
+            let extra = '';
+            try { extra = (await res.text()).slice(0, 180); } catch (e) {}
+            throw new Error('內置 AI 請求失敗（HTTP ' + res.status + '）' + (extra ? '：' + extra : ''));
+          }
+          const data = await res.json();
+          const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+          if (!content || !String(content).trim()) throw new Error('內置 AI 沒有回傳內容');
+          return String(content).trim();
+        } catch (err) {
+          if (err && err.name === 'AbortError') throw new Error('內置 AI 請求逾時，請稍後再試或檢查網絡／Base URL');
+          throw err;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      function describeKitchenForAi() {
+        const now = nowTs();
+        const lines = [];
+        getActiveTools().forEach(t => {
+          const actives = getToolActiveProjects(t.id);
+          const q = getToolQueuedProjects(t.id);
+          const reset = t.quotaResetAt ? formatDateTime(t.quotaResetAt) : '未設定';
+          lines.push(`爐頭：${t.name}｜配額已用 ${t.quotaUsedPct || 0}%｜下次重置 ${reset}｜平行 ${actives.length}/${getMaxParallel(t)}｜隊列 ${q.length} 項`);
+          actives.forEach(p => {
+            lines.push(`  - 進行中／驗收中 [${p.status}] ${projectDisplayName(p)}；進度：${p.progressNote || '（無）'}；摘要：${p.aiTaskSummary || '（無）'}`);
+          });
+          q.forEach(p => {
+            lines.push(`  - 隊列：${projectDisplayName(p)}；目的：${p.aiTaskSummary || p.progressNote || '（無）'}`);
+          });
+          if (!actives.length && !q.length) {
+            const idleMins = t.lastActiveEndedAt ? Math.max(0, (now - t.lastActiveEndedAt) / 60000) : 0;
+            lines.push(`  - 目前空閒（已閒置約 ${formatDuration(idleMins)}）`);
+          }
+        });
+        const prep = getSharedPrepProjects();
+        if (prep.length) {
+          lines.push('共用備料區：');
+          prep.forEach(p => lines.push(`  - ${projectDisplayName(p)}；${p.progressNote || p.aiTaskSummary || ''}`));
+        }
+        return lines.join('\n') || '暫時未有爐頭資料。';
+      }
+
+      function downloadTextFile(filename, content, mime) {
+        const blob = new Blob([content], { type: mime || 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+
+      // 將稍早讀到嘅本地資料（或預設範例）補齊新欄位
+      if (state._pendingDb) {
+        applyLoadedDb(state._pendingDb);
+        delete state._pendingDb;
+      } else {
+        applyLoadedDb(state.db);
+      }
+
       // 儲存資料（同時寫入 LocalStorage 並同步至 Google Cloud Firestore）
       async function persistState() {
         localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(state.db));
@@ -1584,18 +2150,26 @@ D:\Projects\shared-prompts"></textarea>
         }
       }
 
-      function addLog(type, tool, project, durationMinutes, detail) {
-        state.db.logs.push({
+      function addLog(type, tool, project, durationMinutes, detail, extra) {
+        const entry = {
           id: 'log_' + nowTs() + '_' + Math.random().toString(36).slice(2, 6),
           at: nowTs(),
           type,
           toolId: tool ? tool.id : (project ? project.toolId : null),
           toolName: tool ? tool.name : '未指定爐頭',
           projectId: project ? project.id : null,
-          projectName: project ? project.name : '-',
+          projectName: project ? projectDisplayName(project) : '-',
           durationMinutes: Math.round(durationMinutes || 0),
-          detail: detail || ''
-        });
+          detail: detail || '',
+          aiSummary: (extra && extra.aiSummary) || (project && type === 'complete' && (project.aiResultSummary || project.aiTaskSummary)) || ''
+        };
+        if (extra && typeof extra === 'object') {
+          Object.keys(extra).forEach(k => {
+            if (extra[k] != null) entry[k] = extra[k];
+          });
+        }
+        state.db.logs.push(entry);
+        return entry;
       }
 
       // 動態載入官方 Google Firebase SDK 並處理登入及即時同步
@@ -1694,11 +2268,8 @@ D:\Projects\shared-prompts"></textarea>
                   return;
                 }
                 if (cloudData && Array.isArray(cloudData.tools)) {
-                  state.db = {
-                    tools: cloudData.tools || [],
-                    projects: cloudData.projects || [],
-                    logs: cloudData.logs || []
-                  };
+                  applyLoadedDb(cloudData);
+                  checkQuotaResets({ silent: true });
                   localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(state.db));
                   renderAll();
                 }
@@ -1736,7 +2307,7 @@ D:\Projects\shared-prompts"></textarea>
       }
 
       function getToolActiveProject(toolId) {
-        return state.db.projects.find(p => p.toolId === toolId && (p.status === 'running' || p.status === 'review' || p.status === 'paused'));
+        return getToolActiveProjects(toolId)[0] || null;
       }
 
       function renderHeaderStats() {
@@ -1745,20 +2316,20 @@ D:\Projects\shared-prompts"></textarea>
         const now = nowTs();
 
         activeTools.forEach(t => {
-          const p = getToolActiveProject(t.id);
-          if (p) {
+          const actives = getToolActiveProjects(t.id);
+          if (!actives.length && !(t.cooldownUntil && t.cooldownUntil > now)) idle++;
+          actives.forEach(p => {
             if (p.status === 'review') qa++;
             else if (p.status === 'running') {
-              const elapsedMin = (now - (p.currentRunStartedAt || p.startedAt)) / 60000;
+              const elapsedMin = (now - (p.currentRunStartedAt || p.startedAt || now)) / 60000;
               if (elapsedMin >= (p.estimatedMinutes || 30)) qa++;
               else running++;
             }
-          } else if (!(t.cooldownUntil && t.cooldownUntil > now)) {
-            idle++;
-          }
+          });
         });
 
         const queued = state.db.projects.filter(p => p.status === 'queued').length;
+        const doneCount = state.db.projects.filter(p => p.status === 'completed').length;
 
         const statsEl = document.getElementById('headerStats');
         if (statsEl) {
@@ -1766,13 +2337,15 @@ D:\Projects\shared-prompts"></textarea>
             <span class="stat-pill run">🔥 烹調中: ${running}</span>
             <span class="stat-pill qa">👨‍🍳 待試味/Deploy: ${qa}</span>
             <span class="stat-pill idle">🟢 閒置可開火: ${idle}</span>
-            <span class="stat-pill">🧺 備料排隊: ${queued}</span>
+            <span class="stat-pill">🧺 排隊中: ${queued}</span>
           `;
         }
         const navStoves = document.getElementById('navCountStoves');
         if (navStoves) navStoves.textContent = activeTools.length;
         const navProjs = document.getElementById('navCountProjects');
         if (navProjs) navProjs.textContent = state.db.projects.length;
+        const navTl = document.getElementById('navCountTimeline');
+        if (navTl) navTl.textContent = doneCount;
       }
 
       // 主渲染入口
@@ -1790,9 +2363,178 @@ D:\Projects\shared-prompts"></textarea>
 
         if (state.activeTab === 'kitchen') renderKitchenTab(main);
         else if (state.activeTab === 'projects') renderProjectsTab(main);
+        else if (state.activeTab === 'timeline') renderTimelineTab(main);
         else if (state.activeTab === 'analytics') renderAnalyticsTab(main);
         else if (state.activeTab === 'tools') renderToolsTab(main);
         else if (state.activeTab === 'cloud') renderCloudGuideTab(main);
+      }
+
+      function renderActiveJobBlock(proj, now, cookModeLabels) {
+        const elapsedMs = now - (proj.currentRunStartedAt || proj.startedAt || now);
+        const estMs = (proj.estimatedMinutes || 30) * 60000;
+        const pct = Math.min(100, Math.round((elapsedMs / Math.max(1, estMs)) * 100));
+        const isOver = proj.status === 'running' && elapsedMs >= estMs;
+        const dirsHtml = (proj.directories && proj.directories.length)
+          ? `<div class="dir-list">
+              <div class="field-mini-label"><span>📁 相關電腦 File Directory（點擊複製）</span></div>
+              ${proj.directories.map(d => `
+                <div class="dir-pill">
+                  <span class="dir-path" title="${escapeHtml(d)}">${escapeHtml(d)}</span>
+                  <button class="copy-mini-btn" data-copy="${escapeHtml(d)}" onclick="window.app.copyFromAttr(this)">📋 複製</button>
+                </div>
+              `).join('')}
+            </div>`
+          : `<div style="font-size:12px;color:var(--text-muted);">📁 未填寫 File Directory（可選）</div>`;
+
+        const fbLogsHtml = (proj.feedbackLogs && proj.feedbackLogs.length)
+          ? `<div class="feedback-history-list">
+              <strong style="color:#fb923c;">🔄 已回鍋畀 Feedback ${proj.feedbackCount || proj.feedbackLogs.length} 次：</strong>
+              ${proj.feedbackLogs.slice(-2).map(f => `<div>• ${escapeHtml(f.note)}</div>`).join('')}
+            </div>`
+          : '';
+
+        const qa = proj.qaChecklist || { refined: false, verified: false, deployed: false };
+        const summaryBits = [proj.aiTaskSummary, proj.aiResultSummary, proj.aiStageNote].filter(Boolean);
+        const summaryHtml = summaryBits.length
+          ? `<div class="timeline-ai">✨ ${escapeHtml(summaryBits[0])}${proj.aiStageNote && proj.aiStageNote !== summaryBits[0] ? '<br>階段：' + escapeHtml(proj.aiStageNote) : ''}</div>`
+          : '';
+
+        return `
+          <div class="job-block">
+            <div class="project-title-row">
+              <div class="project-title">${escapeHtml(projectDisplayName(proj))}</div>
+              <span class="cook-badge">${cookModeLabels[proj.cookMode] || '🍲 烹調'} · 目標 ${proj.estimatedMinutes || '-'}m</span>
+            </div>
+
+            ${proj.status === 'running' ? `
+              <div class="timer-box">
+                <div class="timer-top">
+                  <span data-live-timer="${proj.id}" style="font-weight:700;color:${isOver ? '#facc15' : 'var(--text-main)'};">
+                    ${isOver ? '🔔 已超時 ' + formatClockDiff(elapsedMs - estMs) + '（快去試味！）' : '⏱️ 剩餘約 ' + formatClockDiff(estMs - elapsedMs)}
+                  </span>
+                  <span style="color:var(--text-secondary);font-size:11.5px;">本輪已跑 <span data-elapsed-timer="${proj.id}">${formatClockDiff(elapsedMs)}</span></span>
+                </div>
+                <div class="timer-progress-track">
+                  <div class="timer-progress-fill ${isOver ? 'overdue' : ''}" data-timer-bar="${proj.id}" style="width:${pct}%;"></div>
+                </div>
+              </div>
+            ` : `
+              <div class="timer-box" style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;">
+                <span>${proj.status === 'review' ? '👨‍🍳 AI 已跑完本輪，請進行下方三步驗收' : '⏸️ 目前暫停計時中'}</span>
+                <span style="color:var(--text-secondary);">累計耗時：${formatDuration(proj.accumulatedMinutes || 0)}</span>
+              </div>
+            `}
+
+            <div class="progress-inline-box">
+              <div class="field-mini-label">
+                <span>💬 進度去到邊（一句說話隨時改，按 Enter 即存）</span>
+              </div>
+              <div class="inline-progress-row">
+                <input type="text" class="inline-input" id="prog_in_${proj.id}" value="${escapeHtml(proj.progressNote || '')}" placeholder="用一句說話寫低依家去到邊..." onkeydown="if(event.key==='Enter'){window.app.quickSaveProgress('${proj.id}');}" />
+                <button class="btn btn-secondary btn-sm" onclick="window.app.quickSaveProgress('${proj.id}')">儲存</button>
+              </div>
+            </div>
+
+            ${summaryHtml}
+            ${dirsHtml}
+
+            <div class="qa-box">
+              <div class="qa-title">
+                <span>✅ 出菜前必做：修整 · 驗證 · Deploy</span>
+                <span style="font-weight:500;font-size:11px;">${[qa.refined, qa.verified, qa.deployed].filter(Boolean).length}/3 完成</span>
+              </div>
+              <div class="qa-checks">
+                <label class="qa-check-item">
+                  <input type="checkbox" ${qa.refined ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'refined', this.checked)" />
+                  <span>1. 修整細節</span>
+                </label>
+                <label class="qa-check-item">
+                  <input type="checkbox" ${qa.verified ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'verified', this.checked)" />
+                  <span>2. 本地驗證</span>
+                </label>
+                <label class="qa-check-item">
+                  <input type="checkbox" ${qa.deployed ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'deployed', this.checked)" />
+                  <span>3. Deploy 確認 Work</span>
+                </label>
+              </div>
+              ${fbLogsHtml}
+            </div>
+
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${proj.status === 'running' ? `<button class="btn btn-qa btn-sm" onclick="window.app.moveToReview('${proj.id}')">👨‍🍳 煮好去驗收</button>` : ''}
+              <button class="btn btn-idle btn-sm" onclick="window.app.completeProject('${proj.id}')">✅ Work！完成上菜</button>
+              <button class="btn btn-primary btn-sm" onclick="window.app.openFeedbackModal('${proj.id}')">🔄 唔Work · 畀Feedback</button>
+              <button class="icon-btn btn-sm" onclick="window.app.openEditProjectModal('${proj.id}')" title="修改項目名稱或路徑">✏️ 改資料</button>
+              <button class="icon-btn btn-sm" onclick="window.app.openPasteAiModal('${proj.toolId}', '${proj.id}')">📋 貼上 Prompt / 回覆</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderToolQueueBox(tool) {
+        const items = getToolQueuedProjects(tool.id);
+        const free = getFreeSlots(tool);
+        const rows = items.length === 0
+          ? `<div style="font-size:12px;color:var(--text-muted);">呢個爐頭暫時無排隊任務。閒置或者煮緊都可以繼續加。</div>`
+          : items.map((qp, idx) => `
+              <div class="queue-item">
+                <div>
+                  <div class="queue-item-name">${idx + 1}. ${escapeHtml(projectDisplayName(qp))}</div>
+                  <div style="font-size:11.5px;color:var(--text-muted);">${escapeHtml(qp.aiTaskSummary || qp.progressNote || '')}</div>
+                </div>
+                <div class="queue-item-actions">
+                  <button class="copy-mini-btn" onclick="window.app.reorderToolQueue('${tool.id}', '${qp.id}', -1)" title="上移">↑</button>
+                  <button class="copy-mini-btn" onclick="window.app.reorderToolQueue('${tool.id}', '${qp.id}', 1)" title="下移">↓</button>
+                  <button class="btn btn-idle btn-sm" onclick="window.app.startQueuedOnTool('${qp.id}')">${free > 0 ? '🔥 開火' : '⏳ 等空位'}</button>
+                  <button class="copy-mini-btn" onclick="window.app.moveQueuedToPrep('${qp.id}')">回備料區</button>
+                  <button class="copy-mini-btn" onclick="window.app.openEditProjectModal('${qp.id}')">改</button>
+                  <button class="copy-mini-btn" onclick="window.app.deleteProject('${qp.id}')">刪</button>
+                </div>
+              </div>
+            `).join('');
+        return `
+          <div class="tool-queue-box">
+            <div class="tool-queue-title">
+              <span>📥 呢個爐頭嘅任務隊列（${items.length}）</span>
+              <button class="copy-mini-btn" onclick="window.app.openNewProjectModal('${tool.id}', 'queue_only')">+ 加任務入隊列</button>
+            </div>
+            ${rows}
+          </div>
+        `;
+      }
+
+      function renderToolMiniTimeline(tool) {
+        const items = (state.db.logs || [])
+          .filter(l => l.toolId === tool.id && (l.type === 'complete' || l.type === 'feedback_rework' || l.type === 'ready_for_qa' || l.type === 'start'))
+          .sort((a, b) => (b.at || 0) - (a.at || 0))
+          .slice(0, 4);
+        if (!items.length) {
+          return `
+            <div class="mini-timeline-box">
+              <div class="mini-timeline-title">
+                <span>🗓️ 最近完成／動態</span>
+                <button class="copy-mini-btn" onclick="state.timelineFilterTool='${tool.id}'; window.app.switchTab('timeline');">睇完整時間線</button>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);">完成任務之後會喺呢度出現，方便追蹤呢個爐頭做過啲乜。</div>
+            </div>`;
+        }
+        const typeLabel = { complete: '✅ 完成', feedback_rework: '🔄 回鍋', ready_for_qa: '👨‍🍳 待驗收', start: '🔥 開火' };
+        return `
+          <div class="mini-timeline-box">
+            <div class="mini-timeline-title">
+              <span>🗓️ 最近完成／動態</span>
+              <button class="copy-mini-btn" onclick="state.timelineFilterTool='${tool.id}'; window.app.switchTab('timeline');">睇完整時間線</button>
+            </div>
+            ${items.map(l => `
+              <div class="mini-tl-item">
+                <div>
+                  <div class="queue-item-name">${typeLabel[l.type] || l.type} · ${escapeHtml(l.projectName || '-')}</div>
+                  <div style="font-size:11.5px;color:var(--text-muted);">${formatDateTime(l.at)}${l.durationMinutes ? ' · ' + formatDuration(l.durationMinutes) : ''}${l.aiSummary || l.detail ? ' · ' + escapeHtml((l.aiSummary || l.detail) || '').slice(0, 80) : ''}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
       }
 
       // 分頁 1：廚房爐頭總覽
@@ -1805,27 +2547,29 @@ D:\Projects\shared-prompts"></textarea>
         let attentionNames = [];
 
         activeTools.forEach(t => {
-          const p = getToolActiveProject(t.id);
-          if (!p && !(t.cooldownUntil && t.cooldownUntil > now)) {
+          const actives = getToolActiveProjects(t.id);
+          const cooling = actives.length === 0 && t.cooldownUntil && t.cooldownUntil > now;
+          if (actives.length === 0 && !cooling) {
             idleNames.push(t.name);
-          } else if (p) {
-            const isOverdue = p.status === 'running' && ((now - (p.currentRunStartedAt || p.startedAt)) / 60000 >= (p.estimatedMinutes || 30));
-            if (p.status === 'review' || isOverdue) attentionNames.push(t.name);
           }
+          actives.forEach(p => {
+            const isOverdue = p.status === 'running' && ((now - (p.currentRunStartedAt || p.startedAt || now)) / 60000 >= (p.estimatedMinutes || 30));
+            if (p.status === 'review' || isOverdue) attentionNames.push(t.name + '／' + projectDisplayName(p));
+          });
         });
 
         let chefAdvice = '';
         if (attentionNames.length > 0 && idleNames.length > 0) {
-          chefAdvice = `👨‍🍳 <strong>主廚提示：</strong>【${escapeHtml(attentionNames.join('、'))}】已經煮好等緊你修整、驗證同 Deploy！另外【${escapeHtml(idleNames.join('、'))}】目前閒置緊，快啲安排新 Project 用盡算力！`;
+          chefAdvice = `👨‍🍳 <strong>主廚提示：</strong>【${escapeHtml(attentionNames.join('、'))}】已經煮好等緊你修整、驗證同 Deploy！另外【${escapeHtml(idleNames.join('、'))}】目前仲有空位，快啲安排新任務用盡算力！`;
         } else if (attentionNames.length > 0) {
           chefAdvice = `👨‍🍳 <strong>主廚提示：</strong>【${escapeHtml(attentionNames.join('、'))}】待試味驗證！試下 Work 唔 Work，唔 Work 即刻畀 Feedback 回鍋重炒。`;
         } else if (idleNames.length > 0) {
-          chefAdvice = `🟢 <strong>算力提醒：</strong>你有 <strong>${idleNames.length} 個爐頭</strong>（${escapeHtml(idleNames.join('、'))}）閒置緊！擺個 Project 落去跑，唔好浪費已訂閱嘅 Token 同月費。`;
+          chefAdvice = `🟢 <strong>算力提醒：</strong>你有 <strong>${idleNames.length} 個爐頭</strong>（${escapeHtml(idleNames.join('、'))}）閒置緊！擺個任務落去跑，或者排入隊列，唔好浪費已訂閱嘅 Token 同月費。`;
         } else {
-          chefAdvice = `🔥 <strong>火力全開！</strong>所有 AI 爐頭都全力運作緊，隨時留意夠鐘響鈴去驗收成果。`;
+          chefAdvice = `🔥 <strong>火力全開！</strong>所有 AI 爐頭都全力運作緊；每個爐頭都仲可以繼續排下一步任務，隨時留意夠鐘響鈴去驗收成果。`;
         }
 
-        const queuedProjects = state.db.projects.filter(p => p.status === 'queued');
+        const queuedProjects = getSharedPrepProjects();
 
         const cookModeLabels = {
           quick: '⚡ 快炒',
@@ -1835,27 +2579,30 @@ D:\Projects\shared-prompts"></textarea>
         };
 
         const stovesHtml = activeTools.map(tool => {
-          const proj = getToolActiveProject(tool.id);
-          const isCooling = !proj && tool.cooldownUntil && tool.cooldownUntil > now;
+          const projs = getToolActiveProjects(tool.id);
+          const maxP = getMaxParallel(tool);
+          const free = getFreeSlots(tool);
+          const isCooling = projs.length === 0 && tool.cooldownUntil && tool.cooldownUntil > now;
 
           let cardStateClass = 'state-idle';
-          let chipHtml = '<span class="status-chip chip-idle">🟢 閒置中 · 可落鍋</span>';
+          let chipHtml = `<span class="status-chip chip-idle">🟢 閒置中 · 可落鍋${maxP > 1 ? '（0/' + maxP + '）' : ''}</span>`;
 
-          if (proj) {
-            const elapsedMs = now - (proj.currentRunStartedAt || proj.startedAt);
-            const estMs = (proj.estimatedMinutes || 30) * 60000;
-            if (proj.status === 'review') {
-              cardStateClass = 'state-review';
-              chipHtml = '<span class="status-chip chip-review">👨‍🍳 待修整 · 驗證 · Deploy</span>';
-            } else if (proj.status === 'paused') {
-              cardStateClass = 'state-cooldown';
-              chipHtml = '<span class="status-chip chip-cool">⏸️ 暫停保溫中</span>';
-            } else if (elapsedMs >= estMs) {
+          if (projs.length) {
+            const hasReview = projs.some(p => p.status === 'review');
+            const hasPausedOnly = projs.every(p => p.status === 'paused');
+            const hasOverdue = projs.some(p => p.status === 'running' && (now - (p.currentRunStartedAt || p.startedAt || now)) >= (p.estimatedMinutes || 30) * 60000);
+            if (hasOverdue) {
               cardStateClass = 'state-overdue';
-              chipHtml = '<span class="status-chip chip-overdue">🔔 夠鐘試味！請驗收</span>';
+              chipHtml = `<span class="status-chip chip-overdue">🔔 夠鐘試味！${projs.length}/${maxP} 運行</span>`;
+            } else if (hasReview) {
+              cardStateClass = 'state-review';
+              chipHtml = `<span class="status-chip chip-review">👨‍🍳 待修整 · 驗證 · Deploy（${projs.length}/${maxP}）</span>`;
+            } else if (hasPausedOnly) {
+              cardStateClass = 'state-cooldown';
+              chipHtml = `<span class="status-chip chip-cool">⏸️ 暫停保溫中（${projs.length}/${maxP}）</span>`;
             } else {
               cardStateClass = 'state-running';
-              chipHtml = '<span class="status-chip chip-running">🔥 烹調運行中</span>';
+              chipHtml = `<span class="status-chip chip-running">🔥 烹調中 ${projs.length}/${maxP}</span>`;
             }
           } else if (isCooling) {
             cardStateClass = 'state-cooldown';
@@ -1866,119 +2613,25 @@ D:\Projects\shared-prompts"></textarea>
           const quotaColor = quotaPct >= 85 ? '#ef4444' : (quotaPct >= 50 ? '#f97316' : '#10b981');
 
           let bodyHtml = '';
-          let footerHtml = '';
-
-          if (proj) {
-            const elapsedMs = now - (proj.currentRunStartedAt || proj.startedAt);
-            const estMs = (proj.estimatedMinutes || 30) * 60000;
-            const pct = Math.min(100, Math.round((elapsedMs / estMs) * 100));
-            const isOver = elapsedMs >= estMs;
-
-            const dirsHtml = (proj.directories && proj.directories.length)
-              ? `<div class="dir-list">
-                  <div class="field-mini-label"><span>📁 相關電腦 File Directory（點擊複製）</span></div>
-                  ${proj.directories.map(d => `
-                    <div class="dir-pill">
-                      <span class="dir-path" title="${escapeHtml(d)}">${escapeHtml(d)}</span>
-                      <button class="copy-mini-btn" data-copy="${escapeHtml(d)}" onclick="window.app.copyFromAttr(this)">📋 複製</button>
-                    </div>
-                  `).join('')}
-                </div>`
-              : `<div style="font-size:12px;color:var(--text-muted);">📁 未填寫 File Directory（可點下方「改資料」補上）</div>`;
-
-            const fbLogsHtml = (proj.feedbackLogs && proj.feedbackLogs.length)
-              ? `<div class="feedback-history-list">
-                  <strong style="color:#fb923c;">🔄 已回鍋畀 Feedback ${proj.feedbackCount || proj.feedbackLogs.length} 次：</strong>
-                  ${proj.feedbackLogs.slice(-2).map(f => `<div>• ${escapeHtml(f.note)}</div>`).join('')}
-                </div>`
-              : '';
-
-            const qa = proj.qaChecklist || { refined: false, verified: false, deployed: false };
-
-            bodyHtml = `
-              <div class="project-title-row">
-                <div class="project-title">${escapeHtml(proj.name)}</div>
-                <span class="cook-badge">${cookModeLabels[proj.cookMode] || '🍲 烹調'} · 目標 ${proj.estimatedMinutes}m</span>
-              </div>
-
-              ${proj.status === 'running' ? `
-                <div class="timer-box">
-                  <div class="timer-top">
-                    <span data-live-timer="${proj.id}" style="font-weight:700;color:${isOver ? '#facc15' : 'var(--text-main)'};">
-                      ${isOver ? '🔔 已超時 ' + formatClockDiff(elapsedMs - estMs) + '（快去試味！）' : '⏱️ 剩餘約 ' + formatClockDiff(estMs - elapsedMs)}
-                    </span>
-                    <span style="color:var(--text-secondary);font-size:11.5px;">本輪已跑 <span data-elapsed-timer="${proj.id}">${formatClockDiff(elapsedMs)}</span></span>
-                  </div>
-                  <div class="timer-progress-track">
-                    <div class="timer-progress-fill ${isOver ? 'overdue' : ''}" data-timer-bar="${proj.id}" style="width:${pct}%;"></div>
-                  </div>
-                </div>
-              ` : `
-                <div class="timer-box" style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;">
-                  <span>${proj.status === 'review' ? '👨‍🍳 AI 已跑完本輪，請進行下方三步驗收' : '⏸️ 目前暫停計時中'}</span>
-                  <span style="color:var(--text-secondary);">累計耗時：${formatDuration(proj.accumulatedMinutes || 0)}</span>
-                </div>
-              `}
-
-              <div class="progress-inline-box">
-                <div class="field-mini-label">
-                  <span>💬 進度去到邊（一句說話隨時改，按 Enter 即存）</span>
-                </div>
-                <div class="inline-progress-row">
-                  <input type="text" class="inline-input" id="prog_in_${proj.id}" value="${escapeHtml(proj.progressNote || '')}" placeholder="用一句說話寫低依家去到邊..." onkeydown="if(event.key==='Enter'){window.app.quickSaveProgress('${proj.id}');}" />
-                  <button class="btn btn-secondary btn-sm" onclick="window.app.quickSaveProgress('${proj.id}')">儲存</button>
-                </div>
-              </div>
-
-              ${dirsHtml}
-
-              <div class="qa-box">
-                <div class="qa-title">
-                  <span>✅ 出菜前必做：修整 · 驗證 · Deploy</span>
-                  <span style="font-weight:500;font-size:11px;">${[qa.refined, qa.verified, qa.deployed].filter(Boolean).length}/3 完成</span>
-                </div>
-                <div class="qa-checks">
-                  <label class="qa-check-item">
-                    <input type="checkbox" ${qa.refined ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'refined', this.checked)" />
-                    <span>1. 修整細節</span>
-                  </label>
-                  <label class="qa-check-item">
-                    <input type="checkbox" ${qa.verified ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'verified', this.checked)" />
-                    <span>2. 本地驗證</span>
-                  </label>
-                  <label class="qa-check-item">
-                    <input type="checkbox" ${qa.deployed ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'deployed', this.checked)" />
-                    <span>3. Deploy 確認 Work</span>
-                  </label>
-                </div>
-                ${fbLogsHtml}
-              </div>
-            `;
-
-            footerHtml = `
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                ${proj.status === 'running' ? `
-                  <button class="btn btn-qa btn-sm" onclick="window.app.moveToReview('${proj.id}')">👨‍🍳 煮好去驗收</button>
-                ` : ''}
-                <button class="btn btn-idle btn-sm" onclick="window.app.completeProject('${proj.id}')">✅ Work！完成上菜</button>
-                <button class="btn btn-primary btn-sm" onclick="window.app.openFeedbackModal('${proj.id}')">🔄 唔Work · 畀Feedback</button>
-              </div>
-              <div style="display:flex;gap:5px;">
-                <button class="icon-btn btn-sm" onclick="window.app.openEditProjectModal('${proj.id}')" title="修改項目名稱或路徑">✏️ 改資料</button>
-              </div>
-            `;
+          if (projs.length) {
+            bodyHtml = projs.map(p => renderActiveJobBlock(p, now, cookModeLabels)).join('');
+            if (free > 0) {
+              bodyHtml += `
+                <div class="slot-note">
+                  <span>🟢 仲有 <strong>${free}</strong> 個平行空位，可以再開任務或者從隊列開火</span>
+                  <button class="btn btn-idle btn-sm" onclick="window.app.openNewProjectModal('${tool.id}')">🔥 再開一個任務</button>
+                </div>`;
+            }
           } else {
-            // 閒置或額度冷卻狀態
             const idleMins = tool.lastActiveEndedAt ? Math.max(0, (now - tool.lastActiveEndedAt) / 60000) : 0;
             const quickQueueOptions = queuedProjects.length > 0
-              ? `<div style="margin-top:8px;width:100%;max-width:260px;">
+              ? `<div style="margin-top:8px;width:100%;max-width:280px;">
                   <select class="form-select" style="font-size:12px;padding:6px 8px;" onchange="if(this.value){window.app.assignQueuedToStove(this.value, '${tool.id}');}">
-                    <option value="">📥 從備料區揀 Project 直接落鍋...</option>
-                    ${queuedProjects.map(qp => `<option value="${qp.id}">${escapeHtml(qp.name)}</option>`).join('')}
+                    <option value="">📥 從共用備料區揀任務落鍋／入隊...</option>
+                    ${queuedProjects.map(qp => `<option value="${qp.id}">${escapeHtml(projectDisplayName(qp))}</option>`).join('')}
                   </select>
                 </div>`
               : '';
-
             bodyHtml = `
               <div class="idle-empty-box" style="${isCooling ? 'border-color:rgba(56,189,248,0.35);background:rgba(56,189,248,0.05);' : ''}">
                 <div class="idle-wok-icon">${isCooling ? '❄️' : '🍳'}</div>
@@ -1988,25 +2641,32 @@ D:\Projects\shared-prompts"></textarea>
                 <div class="idle-time-note">
                   ${isCooling
                     ? `預計冷卻至 ${formatDateTime(tool.cooldownUntil)}`
-                    : `已閒置 <strong data-idle-timer="${tool.id}" data-idle-since="${tool.lastActiveEndedAt || now}">${formatDuration(idleMins)}</strong> · 仲有 <strong>${100 - quotaPct}%</strong> 算力未用盡`
+                    : `已閒置 <strong data-idle-timer="${tool.id}" data-idle-since="${tool.lastActiveEndedAt || now}">${formatDuration(idleMins)}</strong> · 仲有 <strong>${100 - quotaPct}%</strong> 算力未用盡${maxP > 1 ? ' · 可平行 ' + maxP + ' 項' : ''}`
                   }
                 </div>
-                <button class="btn btn-idle" style="margin-top:6px;" onclick="window.app.openNewProjectModal('${tool.id}')">🔥 立即安排新 Project 落鍋</button>
+                <button class="btn btn-idle" style="margin-top:6px;" onclick="window.app.openNewProjectModal('${tool.id}')">🔥 立即安排新任務落鍋</button>
                 ${quickQueueOptions}
               </div>
             `;
-
-            footerHtml = `
-              <span style="font-size:12px;color:var(--text-muted);">${escapeHtml(tool.quotaResetLabel || '記得善用配額')}</span>
-              <div style="display:flex;gap:6px;">
-                ${isCooling
-                  ? `<button class="icon-btn btn-sm" onclick="window.app.clearCooldown('${tool.id}')">🔥 解除冷卻</button>`
-                  : `<button class="icon-btn btn-sm" onclick="window.app.setCooldown('${tool.id}')" title="爆咗 Token 等緊重置時可標記">❄️ 標記爆額冷卻</button>`
-                }
-                <button class="icon-btn btn-sm" onclick="window.app.openEditToolModal('${tool.id}')">⚙️</button>
-              </div>
-            `;
           }
+
+          bodyHtml += renderToolQueueBox(tool);
+          bodyHtml += renderToolMiniTimeline(tool);
+
+          const footerHtml = `
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <span style="font-size:12px;color:var(--text-muted);">${escapeHtml(tool.quotaResetLabel || '')}</span>
+              ${tool.quotaResetAt ? `<span class="reset-meta">♻️ 下次配額歸零：${formatDateTime(tool.quotaResetAt)}</span>` : '<span class="reset-meta">未設定自動歸零時間</span>'}
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="icon-btn btn-sm" onclick="window.app.openPasteAiModal('${tool.id}', '')">📋 貼上 Prompt / 回覆</button>
+              ${isCooling
+                ? `<button class="icon-btn btn-sm" onclick="window.app.clearCooldown('${tool.id}')">🔥 解除冷卻</button>`
+                : `<button class="icon-btn btn-sm" onclick="window.app.setCooldown('${tool.id}')" title="爆咗 Token 等緊重置時可標記">❄️ 標記爆額冷卻</button>`
+              }
+              <button class="icon-btn btn-sm" onclick="window.app.openEditToolModal('${tool.id}')">⚙️ 設定</button>
+            </div>
+          `;
 
           return `
             <div class="stove-card ${cardStateClass}">
@@ -2015,7 +2675,7 @@ D:\Projects\shared-prompts"></textarea>
                   <div class="tool-icon">${escapeHtml(tool.icon || '🤖')}</div>
                   <div>
                     <div class="tool-name">${escapeHtml(tool.name)}</div>
-                    <div class="tool-workflow">${escapeHtml(tool.workflow || '')}</div>
+                    <div class="tool-workflow">${escapeHtml(tool.workflow || '')}${maxP > 1 ? ' · 平行 ' + maxP + ' 項' : ''}</div>
                   </div>
                 </div>
                 ${chipHtml}
@@ -2026,6 +2686,7 @@ D:\Projects\shared-prompts"></textarea>
                 <div class="quota-bar-wrap" onclick="window.app.promptUpdateQuota('${tool.id}')">
                   <div class="quota-bar-fill" style="width:${quotaPct}%;background:${quotaColor};"></div>
                 </div>
+                ${tool.quotaResetAt ? `<span class="reset-meta">♻️ ${formatDateTime(tool.quotaResetAt)}</span>` : ''}
                 <button class="copy-mini-btn" onclick="window.app.promptUpdateQuota('${tool.id}')">更新%</button>
               </div>
 
@@ -2035,24 +2696,28 @@ D:\Projects\shared-prompts"></textarea>
           `;
         }).join('');
 
-        // 備料待煮區
+        // 備料待煮區（共用收件箱）
         const prepHtml = queuedProjects.length === 0
-          ? `<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:13.5px;">目前備料區無排隊項目。當所有鑊都炒緊餸但你突然諗到新 Idea，可以先放落備料區排隊！</div>`
+          ? `<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:13.5px;">目前共用備料區無排隊項目。每個爐頭另外都有自己嘅隊列；突然諗到新 Idea 可以先放呢度，再派去指定爐頭。</div>`
           : `<div class="prep-grid">
               ${queuedProjects.map(qp => {
                 const prefTool = state.db.tools.find(t => t.id === qp.preferredToolId);
                 return `
                   <div class="prep-card">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-                      <strong style="font-size:14.5px;">${escapeHtml(qp.name)}</strong>
+                      <strong style="font-size:14.5px;">${escapeHtml(projectDisplayName(qp))}</strong>
                       <span class="cook-badge">預計 ${qp.estimatedMinutes || 30}m</span>
                     </div>
-                    ${qp.progressNote ? `<div style="font-size:12.5px;color:var(--text-secondary);">💬 ${escapeHtml(qp.progressNote)}</div>` : ''}
+                    ${qp.aiTaskSummary || qp.progressNote ? `<div style="font-size:12.5px;color:var(--text-secondary);">💬 ${escapeHtml(qp.aiTaskSummary || qp.progressNote)}</div>` : ''}
                     ${(qp.directories && qp.directories.length) ? `<div class="mono" style="font-size:11.5px;color:#93c5fd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📁 ${escapeHtml(qp.directories[0])}${qp.directories.length > 1 ? ` (+${qp.directories.length-1})` : ''}</div>` : ''}
                     <div style="margin-top:auto;padding-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                       <span style="font-size:11.5px;color:var(--text-muted);">${prefTool ? '首選：' + escapeHtml(prefTool.name) : '未指定工具'}</span>
-                      <div style="display:flex;gap:6px;">
-                        <button class="btn btn-idle btn-sm" onclick="window.app.openEditProjectModal('${qp.id}')">🔥 揀鑊落鍋 / 編輯</button>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                        <select class="form-select" style="max-width:200px;font-size:12px;padding:6px 8px;" onchange="if(this.value){window.app.assignQueuedToStove('${qp.id}', this.value); this.value='';}">
+                          <option value="">派去爐頭隊列／開火...</option>
+                          ${activeTools.map(t => `<option value="${t.id}">${escapeHtml(t.icon || '')} ${escapeHtml(t.name)} ${getFreeSlots(t) > 0 ? '（可開火）' : '（入隊列）'}</option>`).join('')}
+                        </select>
+                        <button class="btn btn-idle btn-sm" onclick="window.app.openEditProjectModal('${qp.id}')">✏️ 編輯</button>
                         <button class="btn btn-danger btn-sm" onclick="window.app.deleteProject('${qp.id}')">刪除</button>
                       </div>
                     </div>
@@ -2072,28 +2737,85 @@ D:\Projects\shared-prompts"></textarea>
           <div class="chef-banner">
             <div class="chef-banner-text">${chefAdvice}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-primary" onclick="window.app.openNewProjectModal('')">+ 新增 Project / 落鍋開火</button>
+              <button class="btn btn-primary" onclick="window.app.openNewProjectModal('')">+ 新增任務 / 落鍋開火</button>
               <button class="btn btn-secondary" onclick="window.app.openNewToolModal()">+ 加新 AI 工具</button>
+              <button class="btn btn-secondary" onclick="window.app.openBuiltinAiModal()">✨ 內置 AI 分析廚房</button>
+              <button class="btn btn-secondary" onclick="window.app.openExportModal()">📦 匯出</button>
             </div>
           </div>
 
           <div class="section-header">
             <div class="section-title">🔥 我嘅 AI 生產線爐頭（共 ${activeTools.length} 個活躍訂閱）</div>
-            <span style="font-size:12.5px;color:var(--text-secondary);">提示：做完記得剔齊「修整 · 驗證 · Deploy」，唔 Work 就㩒「畀 Feedback」回鍋！</span>
+            <span style="font-size:12.5px;color:var(--text-secondary);">每個爐頭都有自己嘅隊列，忙緊都可以預先排下一步；支援平行工作。</span>
           </div>
 
           <div class="stoves-grid">${stovesHtml}</div>
 
           <div class="prep-section">
             <div class="section-header" style="margin-bottom:4px;">
-              <div class="section-title">🧺 備料待煮區（預先排隊嘅新 Project 靈感）</div>
-              <button class="btn btn-secondary btn-sm" onclick="window.app.openNewProjectModal('QUEUE')">+ 先擺個新 Project 入備料區</button>
+              <div class="section-title">🧺 共用備料待煮區（未指定爐頭嘅收件箱）</div>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.openNewProjectModal('QUEUE')">+ 先擺個新任務入備料區</button>
             </div>
-            <p style="font-size:12.5px;color:var(--text-secondary);">預先寫低想做嘅 Project 名同 File Directory，一有爐頭閒置就可以一秒落鍋，零空窗期！</p>
+            <p style="font-size:12.5px;color:var(--text-secondary);">呢度係總收件箱。指定咗爐頭嘅排隊任務會出現喺嗰個爐頭卡入面，方便你計劃下一個可以交俾閒置算力嘅工作。</p>
             ${prepHtml}
           </div>
         `;
       }
+
+      function renderTimelineTab(container) {
+        const filterTool = state.timelineFilterTool || 'all';
+        const items = [...(state.db.logs || [])]
+          .filter(l => {
+            if (filterTool !== 'all' && l.toolId !== filterTool) return false;
+            return true;
+          })
+          .sort((a, b) => (b.at || 0) - (a.at || 0));
+
+        const typeLabel = {
+          complete: '✅ 完成上菜',
+          start: '🔥 落鍋開火',
+          queue: '🧺 加入隊列',
+          feedback_rework: '🔄 回鍋 Feedback',
+          ready_for_qa: '👨‍🍳 進入驗收',
+          progress_update: '💬 更新進度',
+          note: '📝 備註'
+        };
+
+        const listHtml = items.length === 0
+          ? `<div style="padding:28px;text-align:center;color:var(--text-muted);">暫時未有可追蹤嘅動態。完成任務、貼上 AI 摘要或者開火之後，就會喺呢條時間線出現。</div>`
+          : `<div class="timeline-list">
+              ${items.map(l => `
+                <div class="timeline-item type-${escapeHtml(l.type || '')}">
+                  <div class="timeline-time">${formatDateTime(l.at)} · ${escapeHtml(l.toolName || '未指定爐頭')}</div>
+                  <div class="timeline-title">${typeLabel[l.type] || escapeHtml(l.type || '動態')} · ${escapeHtml(l.projectName || '-')}</div>
+                  <div class="timeline-detail">
+                    ${l.durationMinutes ? '耗時 ' + formatDuration(l.durationMinutes) + ' · ' : ''}${escapeHtml(l.detail || '')}
+                  </div>
+                  ${l.aiSummary ? `<div class="timeline-ai">✨ ${escapeHtml(l.aiSummary)}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>`;
+
+        container.innerHTML = `
+          <div class="panel-card">
+            <div class="section-header">
+              <div>
+                <div class="section-title">🗓️ 廚房時間線（共 ${items.length} 項紀錄）</div>
+                <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">沿用同一個工作日誌：完成、開火、回鍋同內置 AI 摘要都會喺呢度，方便你追蹤每個爐頭之前做過啲乜。</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <select class="form-select" style="max-width:240px;" onchange="window.app.setTimelineFilterTool(this.value)">
+                  <option value="all" ${filterTool === 'all' ? 'selected' : ''}>所有爐頭</option>
+                  ${state.db.tools.map(t => `<option value="${t.id}" ${filterTool === t.id ? 'selected' : ''}>${escapeHtml(t.icon || '')} ${escapeHtml(t.name)}</option>`).join('')}
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="window.app.openExportModal()">📦 匯出</button>
+              </div>
+            </div>
+            ${listHtml}
+          </div>
+        `;
+      }
+
 
       // 分頁 2：所有專案紀錄與資料庫搜尋（獨立渲染表格列，避免搜尋輸入時中斷中文輸入法游標）
       function buildProjectsRowsHtml() {
@@ -2181,6 +2903,8 @@ D:\Projects\shared-prompts"></textarea>
               <div class="section-title">📋 專案資料庫總覽（共 <span id="projectsCountSpan">${count}</span> 筆紀錄）</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-secondary btn-sm" onclick="window.app.exportCSV()">📊 匯出 Excel CSV</button>
+                <button class="btn btn-secondary btn-sm" onclick="window.app.openExportModal()">📦 匯出 JSON</button>
+                <button class="btn btn-secondary btn-sm" onclick="window.app.pickImportJson()">📥 匯入 JSON</button>
                 <button class="btn btn-primary btn-sm" onclick="window.app.openNewProjectModal('')">+ 新增 Project</button>
               </div>
             </div>
@@ -2277,7 +3001,7 @@ D:\Projects\shared-prompts"></textarea>
                 <option value="9999" ${days === 9999 ? 'selected' : ''}>檢討範圍：全部歷史紀錄</option>
               </select>
               <button class="btn btn-secondary btn-sm" onclick="window.app.exportCSV()">📥 匯出 CSV 報表</button>
-              <button class="btn btn-secondary btn-sm" onclick="window.app.exportJSONBackup()">💾 匯出完整 JSON 備份</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.openExportModal()">📦 匯出資料 / 設定</button>
               <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
                 📂 匯入 JSON 備份
                 <input type="file" accept=".json" style="display:none;" onchange="window.app.importJSONBackup(event)" />
@@ -2378,6 +3102,8 @@ D:\Projects\shared-prompts"></textarea>
                     <th>工作流模式</th>
                     <th>月費 (HK$)</th>
                     <th>已用配額 %</th>
+                    <th>平行上限</th>
+                    <th>下次自動歸零</th>
                     <th>配額重置備註</th>
                     <th>狀態</th>
                     <th>操作</th>
@@ -2391,6 +3117,8 @@ D:\Projects\shared-prompts"></textarea>
                       <td>${escapeHtml(t.workflow || '-')}</td>
                       <td>HK$${t.monthlyCostHKD || 0}</td>
                       <td>${t.quotaUsedPct || 0}%</td>
+                      <td>${getMaxParallel(t)}</td>
+                      <td>${t.quotaResetAt ? formatDateTime(t.quotaResetAt) : '—'}</td>
                       <td>${escapeHtml(t.quotaResetLabel || '-')}</td>
                       <td>${t.archived ? '<span class="status-chip chip-cool">📦 已退訂封存</span>' : '<span class="status-chip chip-idle">🟢 服役中</span>'}</td>
                       <td>
@@ -2485,6 +3213,44 @@ service cloud.firestore {
               ` : ''}
             </div>
           </div>
+
+          <div class="panel-card">
+            <div class="section-title">✨ 內置 AI 設定（OpenAI 相容 Chat Completions）</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin:6px 0 12px;">填好之後，每個爐頭都可以貼上 Prompt 或 AI 回覆，一鍵總結任務目的、分析完咗未。Key 只會儲存在呢部瀏覽器，唔會寫入匯出嘅 HTML，亦唔會出現喺雲端設定槽。</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Base URL</label>
+                <input type="text" id="aiBaseUrl" class="form-input" placeholder="https://api.openai.com" value="${escapeHtml((state.aiCfg && state.aiCfg.baseUrl) || 'https://api.openai.com')}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Model</label>
+                <input type="text" id="aiModel" class="form-input" placeholder="gpt-4o-mini" value="${escapeHtml((state.aiCfg && state.aiCfg.model) || 'gpt-4o-mini')}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Endpoint Path（通常唔使改）</label>
+              <input type="text" id="aiEndpointPath" class="form-input" placeholder="/v1/chat/completions" value="${escapeHtml((state.aiCfg && state.aiCfg.endpointPath) || '/v1/chat/completions')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input type="password" id="aiApiKey" class="form-input" placeholder="${(state.aiCfg && state.aiCfg.apiKey) ? '已儲存於呢部瀏覽器；留空再儲存會保留舊 Key' : 'sk-... 或相容服務嘅 Key'}" autocomplete="off">
+              <span class="form-hint">${(state.aiCfg && state.aiCfg.apiKey) ? '目前已有儲存嘅 Key。若要清除，輸入一個空格後儲存。' : 'Key 只存在 localStorage，唔會寫進 GitHub 上嘅 index.html。'}</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="window.app.saveBuiltinAiSettings()">💾 儲存內置 AI 設定</button>
+              <button class="btn btn-secondary" onclick="window.app.openBuiltinAiModal()">✨ 打開內置 AI 面板</button>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="section-title">📦 資料匯入 / 匯出</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin:6px 0 12px;">資料唔一定要填得齊：匯入時缺欄位會自動補預設值，亦唔會覆蓋呢個檔案入面已綁定嘅 Firebase 雲端設定。</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="window.app.openExportModal()">📦 匯出資料 / 設定</button>
+              <button class="btn btn-secondary" onclick="window.app.pickImportJson()">📥 匯入 JSON</button>
+              <button class="btn btn-secondary" onclick="window.app.exportCSV()">📊 匯出 CSV</button>
+            </div>
+          </div>
         `;
       }
 
@@ -2550,6 +3316,12 @@ service cloud.firestore {
           const since = Number(el.getAttribute('data-idle-since')) || now;
           el.textContent = formatDuration((now - since) / 60000);
         });
+
+        if (!state._quotaTick) state._quotaTick = 0;
+        state._quotaTick += 1;
+        if (state._quotaTick % 5 === 0) {
+          checkQuotaResets({ rerender: true });
+        }
       }, 1000);
 
       // 公開操作介面
@@ -2598,17 +3370,20 @@ service cloud.firestore {
         populateToolSelect(selectedVal) {
           const sel = document.getElementById('pmToolId');
           const activeTools = getActiveTools();
-          const now = nowTs();
-          let html = `<option value="QUEUE" ${selectedVal === 'QUEUE' ? 'selected' : ''}>🧺 先擺入備料待煮區（暫不佔用爐頭）</option>`;
+          let html = `<option value="QUEUE" ${selectedVal === 'QUEUE' ? 'selected' : ''}>🧺 先擺入共用備料待煮區（未指定爐頭）</option>`;
           activeTools.forEach(t => {
-            const busyProj = getToolActiveProject(t.id);
-            const tag = busyProj ? `（目前煮緊：${busyProj.name.slice(0, 12)}...）` : '（🟢 閒置可即刻落鍋！）';
-            html += `<option value="${t.id}" ${selectedVal === t.id ? 'selected' : ''}>${escapeHtml(t.icon)} ${escapeHtml(t.name)} ${escapeHtml(tag)}</option>`;
+            const used = getToolActiveProjects(t.id).length;
+            const maxP = getMaxParallel(t);
+            const qn = getToolQueuedProjects(t.id).length;
+            let tag;
+            if (used < maxP) tag = `（🟢 ${used}/${maxP} 運行中，可再開；隊列 ${qn}）`;
+            else tag = `（🔥 ${used}/${maxP} 已滿，會入爐頭隊列 ${qn}）`;
+            html += `<option value="${t.id}" ${selectedVal === t.id ? 'selected' : ''}>${escapeHtml(t.icon || '')} ${escapeHtml(t.name)} ${escapeHtml(tag)}</option>`;
           });
           sel.innerHTML = html;
         },
-        openNewProjectModal(preselectedToolId) {
-          document.getElementById('projectModalTitle').textContent = preselectedToolId === 'QUEUE' ? '🧺 新增備料待煮 Project' : '🔥 落鍋開新 Project';
+        openNewProjectModal(preselectedToolId, assignMode) {
+          document.getElementById('projectModalTitle').textContent = preselectedToolId === 'QUEUE' ? '🧺 新增備料待煮任務' : (assignMode === 'queue_only' ? '📥 將新任務排入爐頭隊列' : '🔥 落鍋開新任務');
           document.getElementById('pmProjectId').value = '';
           document.getElementById('pmName').value = '';
           document.getElementById('pmDirs').value = '';
@@ -2618,10 +3393,12 @@ service cloud.firestore {
 
           let defaultTarget = preselectedToolId;
           if (!defaultTarget) {
-            const firstIdle = getActiveTools().find(t => !getToolActiveProject(t.id));
+            const firstIdle = getActiveTools().find(t => getFreeSlots(t) > 0);
             defaultTarget = firstIdle ? firstIdle.id : 'QUEUE';
           }
           this.populateToolSelect(defaultTarget);
+          const modeSel = document.getElementById('pmAssignMode');
+          if (modeSel) modeSel.value = assignMode === 'queue_only' ? 'queue_only' : 'auto';
           document.getElementById('projectModal').classList.add('open');
         },
         openEditProjectModal(projId) {
@@ -2634,7 +3411,9 @@ service cloud.firestore {
           document.getElementById('pmProgress').value = p.progressNote || '';
           document.getElementById('pmCookMode').value = p.cookMode || 'braise';
           document.getElementById('pmEstMinutes').value = p.estimatedMinutes || 45;
-          this.populateToolSelect(p.status === 'queued' || !p.toolId ? 'QUEUE' : p.toolId);
+          this.populateToolSelect((p.status === 'queued' && !p.toolId) || !p.toolId ? 'QUEUE' : p.toolId);
+          const modeSel = document.getElementById('pmAssignMode');
+          if (modeSel) modeSel.value = (p.status === 'queued' && p.toolId) ? 'queue_only' : 'auto';
           document.getElementById('projectModal').classList.add('open');
         },
         saveProjectModal() {
@@ -2658,31 +3437,20 @@ service cloud.firestore {
 
           const isQueue = targetToolVal === 'QUEUE';
           const now = nowTs();
-
-          // 若揀咗某個正在煮緊嘢嘅爐頭，先檢查會唔會撞鑊
-          if (!isQueue) {
-            const conflict = state.db.projects.find(p => p.toolId === targetToolVal && p.id !== id && (p.status === 'running' || p.status === 'review' || p.status === 'paused'));
-            if (conflict) {
-              const ok = confirm(`「${conflict.name}」目前仲霸緊呢個爐頭！\n你想將舊嗰個退返去「備料待煮區」，定係取消？\n（撳「確定」會將舊 Project 移去備料區並換新餸落鍋）`);
-              if (!ok) return;
-              const elapsed = conflict.status === 'running' ? (now - (conflict.currentRunStartedAt || conflict.startedAt)) / 60000 : 0;
-              conflict.accumulatedMinutes = Math.round((conflict.accumulatedMinutes || 0) + elapsed);
-              conflict.status = 'queued';
-              conflict.preferredToolId = targetToolVal;
-              conflict.toolId = null;
-            }
-          }
+          const assignModeEl = document.getElementById('pmAssignMode');
+          const assignMode = (assignModeEl && assignModeEl.value) || 'auto';
 
           const toolObj = isQueue ? null : state.db.tools.find(t => t.id === targetToolVal);
           if (toolObj) toolObj.cooldownUntil = null;
 
+          let resultKind = isQueue ? 'queued' : 'running';
+
           if (id) {
             const p = state.db.projects.find(x => x.id === id);
             if (p) {
-              const wasQueued = p.status === 'queued' || !p.toolId;
               p.name = name;
               p.directories = directories;
-              p.progressNote = progress;
+              if (progress) p.progressNote = progress;
               p.cookMode = cookMode;
               p.estimatedMinutes = estMins;
               p.isSample = false;
@@ -2690,13 +3458,15 @@ service cloud.firestore {
               if (isQueue) {
                 p.status = 'queued';
                 p.toolId = null;
+                p.currentRunStartedAt = null;
+                resultKind = 'prep';
               } else {
-                p.toolId = targetToolVal;
-                if (wasQueued || p.status === 'completed') {
-                  p.status = 'running';
-                  p.currentRunStartedAt = now;
-                  if (!p.startedAt) p.startedAt = now;
-                  addLog('start', toolObj, p, 0, '從備料區落鍋開火');
+                const prevStatus = p.status;
+                resultKind = applyProjectToTool(p, toolObj, assignMode);
+                if (resultKind === 'running' && prevStatus !== 'running') {
+                  addLog('start', toolObj, p, 0, '落鍋開火');
+                } else if (resultKind === 'queued') {
+                  addLog('queue', toolObj, p, 0, '排入爐頭隊列');
                 }
               }
             }
@@ -2705,45 +3475,51 @@ service cloud.firestore {
               id: 'proj_' + now + '_' + Math.random().toString(36).slice(2, 6),
               name,
               toolId: isQueue ? null : targetToolVal,
-              preferredToolId: isQueue ? null : targetToolVal,
-              status: isQueue ? 'queued' : 'running',
+              preferredToolId: isQueue ? (null) : targetToolVal,
+              status: 'queued',
               directories,
               progressNote: progress,
               cookMode,
               estimatedMinutes: estMins,
               startedAt: now,
-              currentRunStartedAt: isQueue ? null : now,
+              currentRunStartedAt: null,
               accumulatedMinutes: 0,
               completedAt: null,
               qaChecklist: { refined: false, verified: false, deployed: false },
               feedbackCount: 0,
               feedbackLogs: [],
-              isSample: false
+              isSample: false,
+              queueOrder: toolObj ? nextQueueOrder(toolObj.id) : 0
             };
             state.db.projects.push(newProj);
-            addLog(isQueue ? 'queue' : 'start', toolObj, newProj, 0, isQueue ? '加入備料區' : '新落鍋開火');
+            if (isQueue) {
+              resultKind = 'prep';
+              addLog('queue', null, newProj, 0, '加入共用備料區');
+            } else {
+              resultKind = applyProjectToTool(newProj, toolObj, assignMode);
+              addLog(resultKind === 'running' ? 'start' : 'queue', toolObj, newProj, 0, resultKind === 'running' ? '新落鍋開火' : '排入爐頭隊列');
+            }
           }
 
           this.closeModal('projectModal');
           persistState();
           renderAll();
-          showToast(isQueue ? '🧺 已放入備料待煮區！' : `🔥 已落鍋開火：${name}`);
+          if (resultKind === 'prep') showToast('🧺 已放入共用備料待煮區！');
+          else if (resultKind === 'queued') showToast(`📥 爐頭平行位已滿或你選擇只排隊，已將「${name}」排入隊列`);
+          else showToast(`🔥 已落鍋開火：${name}`);
         },
-        assignQueuedToStove(projId, toolId) {
+        assignQueuedToStove(projId, toolId, mode) {
           const p = state.db.projects.find(x => x.id === projId);
           const tool = state.db.tools.find(t => t.id === toolId);
           if (!p || !tool) return;
-          const now = nowTs();
-          p.toolId = toolId;
-          p.status = 'running';
-          p.startedAt = p.startedAt || now;
-          p.currentRunStartedAt = now;
-          p.isSample = false;
-          tool.cooldownUntil = null;
-          addLog('start', tool, p, 0, '從備料區直接落鍋');
+          const resultKind = applyProjectToTool(p, tool, mode || 'auto');
+          if (resultKind === 'running') addLog('start', tool, p, 0, '從備料區／隊列落鍋開火');
+          else addLog('queue', tool, p, 0, '派入爐頭隊列');
           persistState();
           renderAll();
-          showToast(`🔥 已將「${p.name}」擺落 ${tool.name} 開火！`);
+          showToast(resultKind === 'running'
+            ? `🔥 已將「${projectDisplayName(p)}」擺落 ${tool.name} 開火！`
+            : `📥 ${tool.name} 目前已滿，已將「${projectDisplayName(p)}」排入呢個爐頭隊列`);
         },
         quickSaveProgress(projId) {
           const p = state.db.projects.find(x => x.id === projId);
@@ -2842,7 +3618,7 @@ service cloud.firestore {
 
           const tool = state.db.tools.find(t => t.id === p.toolId);
           if (tool) tool.lastActiveEndedAt = now;
-          addLog('complete', tool, p, p.accumulatedMinutes, '驗證及 Deploy 成功，完成上菜');
+          addLog('complete', tool, p, p.accumulatedMinutes, p.aiResultSummary || p.progressNote || '驗證及 Deploy 成功，完成上菜', { aiSummary: p.aiResultSummary || p.aiTaskSummary || '' });
 
           persistState();
           renderAll();
@@ -2912,6 +3688,9 @@ service cloud.firestore {
           document.getElementById('tmCost').value = 150;
           document.getElementById('tmQuota').value = 0;
           document.getElementById('tmResetNote').value = '每月 / 滾動視窗重置';
+          document.getElementById('tmResetAt').value = '';
+          document.getElementById('tmResetPeriod').value = 'monthly';
+          document.getElementById('tmMaxParallel').value = 1;
           document.getElementById('toolModal').classList.add('open');
         },
         openEditToolModal(toolId) {
@@ -2925,6 +3704,9 @@ service cloud.firestore {
           document.getElementById('tmCost').value = t.monthlyCostHKD || 0;
           document.getElementById('tmQuota').value = t.quotaUsedPct || 0;
           document.getElementById('tmResetNote').value = t.quotaResetLabel || '';
+          document.getElementById('tmResetAt').value = toDatetimeLocalValue(t.quotaResetAt);
+          document.getElementById('tmResetPeriod').value = t.quotaResetPeriod === 'none' ? 'none' : 'monthly';
+          document.getElementById('tmMaxParallel').value = getMaxParallel(t);
           document.getElementById('toolModal').classList.add('open');
         },
         saveToolModal() {
@@ -2935,6 +3717,9 @@ service cloud.firestore {
           const cost = Math.max(0, Number(document.getElementById('tmCost').value) || 0);
           const quota = Math.min(100, Math.max(0, Number(document.getElementById('tmQuota').value) || 0));
           const resetNote = document.getElementById('tmResetNote').value.trim();
+          const resetAt = parseDatetimeLocal(document.getElementById('tmResetAt').value);
+          const resetPeriod = document.getElementById('tmResetPeriod').value === 'none' ? 'none' : 'monthly';
+          const maxParallel = Math.max(1, Math.min(12, Math.round(Number(document.getElementById('tmMaxParallel').value) || 1)));
 
           if (!name) {
             showToast('⚠️ 請輸入工具名稱');
@@ -2950,6 +3735,9 @@ service cloud.firestore {
               t.monthlyCostHKD = cost;
               t.quotaUsedPct = quota;
               t.quotaResetLabel = resetNote;
+              t.quotaResetAt = resetAt;
+              t.quotaResetPeriod = resetPeriod;
+              t.maxParallel = maxParallel;
             }
           } else {
             state.db.tools.push({
@@ -2960,6 +3748,9 @@ service cloud.firestore {
               monthlyCostHKD: cost,
               quotaUsedPct: quota,
               quotaResetLabel: resetNote,
+              quotaResetAt: resetAt,
+              quotaResetPeriod: resetPeriod,
+              maxParallel,
               cooldownUntil: null,
               lastActiveEndedAt: nowTs(),
               archived: false,
@@ -3014,7 +3805,7 @@ service cloud.firestore {
         },
         exportCSV() {
           const rows = [
-            ['Project名稱', '使用AI工具', '狀態', '相關File_Directories', '一句講進度', '預計分鐘', '實際累計分鐘', '回鍋Feedback次數', '開始時間', '完成時間']
+            ['Project名稱', '使用AI工具', '狀態', '相關File_Directories', '一句講進度', '任務摘要', '完成摘要', '預計分鐘', '實際累計分鐘', '回鍋Feedback次數', '開始時間', '完成時間']
           ];
           state.db.projects.forEach(p => {
             const t = state.db.tools.find(x => x.id === (p.toolId || p.preferredToolId));
@@ -3024,6 +3815,8 @@ service cloud.firestore {
               p.status || '',
               (p.directories || []).join(' ; '),
               p.progressNote || '',
+              p.aiTaskSummary || '',
+              p.aiResultSummary || '',
               p.estimatedMinutes || 0,
               p.accumulatedMinutes || 0,
               p.feedbackCount || 0,
@@ -3041,15 +3834,54 @@ service cloud.firestore {
           URL.revokeObjectURL(url);
           showToast('📊 已匯出 CSV 報表（可直接用 Excel 打開）');
         },
-        exportJSONBackup() {
-          const blob = new Blob([JSON.stringify(state.db, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `AI生產線完整備份_${new Date().toISOString().slice(0,10)}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
-          showToast('💾 已下載完整 JSON 資料庫備份');
+        setTimelineFilterTool(val) {
+          state.timelineFilterTool = val || 'all';
+          if (state.activeTab === 'timeline') renderTimelineTab(document.getElementById('mainView'));
+        },
+        openExportModal() {
+          document.getElementById('exportModal').classList.add('open');
+        },
+        pickImportJson() {
+          const el = document.getElementById('importJsonFile');
+          if (!el) return;
+          el.value = '';
+          el.click();
+        },
+        exportJSONBackup(mode) {
+          mode = mode || 'data';
+          const stamp = new Date().toISOString().slice(0, 10);
+          const payload = {
+            format: 'ai_kitchen_backup_v2',
+            exportedAt: new Date().toISOString(),
+            tools: state.db.tools,
+            projects: state.db.projects,
+            logs: state.db.logs
+          };
+          let filename = `AI生產線資料_${stamp}.json`;
+          if (mode === 'settings' || mode === 'settings_with_key') {
+            payload.prefs = {
+              sound: state.prefs.sound,
+              theme: state.prefs.theme,
+              analyticsDays: state.prefs.analyticsDays
+            };
+            const cfg = state.aiCfg || loadAiCfg();
+            payload.aiSettings = {
+              baseUrl: cfg.baseUrl || '',
+              model: cfg.model || '',
+              endpointPath: cfg.endpointPath || '/v1/chat/completions'
+            };
+            if (mode === 'settings_with_key') {
+              payload.aiSettings.apiKey = cfg.apiKey || '';
+              filename = `AI生產線私人備份_含Key_${stamp}.json`;
+            } else {
+              filename = `AI生產線資料與設定_${stamp}.json`;
+            }
+          }
+          downloadTextFile(filename, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+          this.closeModal('exportModal');
+          showToast(mode === 'settings_with_key'
+            ? '🔐 已下載含 API Key 嘅私人備份（請唔好分享呢個檔）'
+            : (mode === 'settings' ? '⚙️ 已匯出資料 + 設定（不含 API Key）' : '💾 已匯出廚房資料 JSON'));
         },
         importJSONBackup(event) {
           const file = event.target.files && event.target.files[0];
@@ -3058,24 +3890,321 @@ service cloud.firestore {
           reader.onload = (e) => {
             try {
               const parsed = JSON.parse(e.target.result);
-              if (!parsed || !Array.isArray(parsed.tools) || !Array.isArray(parsed.projects)) {
-                showToast('⚠️ 備份檔案格式唔正確');
+              const tools = parsed && (Array.isArray(parsed.tools) ? parsed.tools : (parsed.db && parsed.db.tools));
+              const projects = parsed && (Array.isArray(parsed.projects) ? parsed.projects : (parsed.db && parsed.db.projects));
+              if (!parsed || !Array.isArray(tools) || !Array.isArray(projects)) {
+                showToast('⚠️ 備份檔案格式唔正確（需要 tools 同 projects 陣列）');
                 return;
               }
-              state.db = {
-                tools: parsed.tools,
-                projects: parsed.projects,
-                logs: parsed.logs || []
-              };
+              const logs = Array.isArray(parsed.logs) ? parsed.logs : ((parsed.db && parsed.db.logs) || []);
+              const mode = confirm('匯入方式：\n\n撳「確定」＝合併（按 ID 更新已有項目，新項目會加進去）\n撳「取消」＝再確認是否改為完全取代現有資料');
+              let replace = false;
+              if (!mode) {
+                replace = confirm('確定要用呢個檔案完全取代現有工具、任務同時間線嗎？呢一步唔會改到 Firebase 雲端設定槽。');
+                if (!replace) {
+                  showToast('已取消匯入');
+                  return;
+                }
+              }
+              const incoming = normalizeDb({ tools, projects, logs });
+              if (replace) {
+                state.db = incoming;
+              } else {
+                const mergeById = (curr, add) => {
+                  const map = new Map();
+                  (curr || []).forEach(x => { if (x && x.id) map.set(x.id, x); });
+                  (add || []).forEach(x => {
+                    if (!x || !x.id) return;
+                    if (map.has(x.id)) Object.assign(map.get(x.id), x);
+                    else map.set(x.id, x);
+                  });
+                  return [...map.values()];
+                };
+                state.db = normalizeDb({
+                  tools: mergeById(state.db.tools, incoming.tools),
+                  projects: mergeById(state.db.projects, incoming.projects),
+                  logs: mergeById(state.db.logs, incoming.logs)
+                });
+              }
+              if (parsed.prefs && typeof parsed.prefs === 'object') {
+                state.prefs = Object.assign(state.prefs, parsed.prefs);
+                savePrefs();
+              }
+              if (parsed.aiSettings && typeof parsed.aiSettings === 'object') {
+                const cur = state.aiCfg || loadAiCfg();
+                const next = Object.assign({}, cur, {
+                  baseUrl: parsed.aiSettings.baseUrl || cur.baseUrl,
+                  model: parsed.aiSettings.model || cur.model,
+                  endpointPath: parsed.aiSettings.endpointPath || cur.endpointPath
+                });
+                if (parsed.aiSettings.apiKey) next.apiKey = parsed.aiSettings.apiKey;
+                saveAiCfg(next);
+              }
+              checkQuotaResets({ silent: true });
               persistState();
               renderAll();
-              showToast('✅ 成功匯入資料庫備份並已同步！');
+              showToast(replace ? '✅ 已用備份取代資料並同步（雲端設定槽未改）' : '✅ 已合併匯入資料並同步（雲端設定槽未改）');
             } catch (err) {
-              showToast('⚠️ 讀取 JSON 失敗');
+              showToast('⚠️ 讀取 JSON 失敗：' + (err && err.message ? err.message : '格式錯誤'));
             }
           };
           reader.readAsText(file);
         },
+        startQueuedOnTool(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          const tool = state.db.tools.find(t => t.id === p.toolId);
+          if (!tool) {
+            showToast('⚠️ 呢個任務未指定爐頭，請先從備料區派出去');
+            return;
+          }
+          if (getFreeSlots(tool, p.id) <= 0) {
+            showToast('⏳ 呢個爐頭嘅平行位已滿，完成或釋放其中一項就可以開火');
+            return;
+          }
+          const kind = applyProjectToTool(p, tool, 'auto');
+          if (kind === 'running') addLog('start', tool, p, 0, '由爐頭隊列開火');
+          persistState();
+          renderAll();
+          showToast(kind === 'running' ? `🔥 已將「${projectDisplayName(p)}」開火！` : '📥 暫時未能開火，仍留喺隊列');
+        },
+        moveQueuedToPrep(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          p.preferredToolId = p.toolId || p.preferredToolId || null;
+          p.toolId = null;
+          p.status = 'queued';
+          p.currentRunStartedAt = null;
+          persistState();
+          renderAll();
+          showToast('🧺 已將任務移返共用備料區');
+        },
+        reorderToolQueue(toolId, projId, dir) {
+          const items = getToolQueuedProjects(toolId);
+          const idx = items.findIndex(p => p.id === projId);
+          if (idx < 0) return;
+          const swap = idx + dir;
+          if (swap < 0 || swap >= items.length) return;
+          const a = items[idx], b = items[swap];
+          const oa = a.queueOrder || idx + 1;
+          const ob = b.queueOrder || swap + 1;
+          a.queueOrder = ob;
+          b.queueOrder = oa;
+          persistState();
+          renderAll();
+        },
+        saveBuiltinAiSettings() {
+          const cur = state.aiCfg || loadAiCfg();
+          const baseUrl = (document.getElementById('aiBaseUrl').value || '').trim() || 'https://api.openai.com';
+          const model = (document.getElementById('aiModel').value || '').trim() || 'gpt-4o-mini';
+          const endpointPath = (document.getElementById('aiEndpointPath').value || '').trim() || '/v1/chat/completions';
+          const keyInput = document.getElementById('aiApiKey').value;
+          let apiKey = cur.apiKey || '';
+          if (keyInput === ' ') apiKey = '';
+          else if (keyInput && keyInput.trim()) apiKey = keyInput.trim();
+          saveAiCfg({ apiKey, baseUrl, model, endpointPath });
+          showToast(apiKey ? '✅ 已儲存內置 AI 設定（Key 只留喺呢部瀏覽器）' : '✅ 已儲存 Base URL / Model（目前未有 API Key）');
+        },
+        openPasteAiModal(toolId, projId) {
+          const tool = state.db.tools.find(t => t.id === toolId);
+          document.getElementById('paToolId').value = toolId || '';
+          document.getElementById('pasteAiModalTitle').textContent = tool ? `📋 ${tool.icon || ''} ${tool.name} · 貼上 Prompt / 回覆` : '📋 貼上 Prompt / 回覆';
+          const options = ['<option value="">（稍後先儲存，或用摘要開新任務）</option>'];
+          const pool = (state.db.projects || []).filter(p => !toolId || p.toolId === toolId || (p.status === 'queued' && !p.toolId) || p.id === projId);
+          const seen = new Set();
+          pool.sort((a, b) => {
+            const rank = s => s === 'running' ? 0 : s === 'review' ? 1 : s === 'paused' ? 2 : s === 'queued' ? 3 : 4;
+            return rank(a.status) - rank(b.status);
+          }).forEach(p => {
+            if (seen.has(p.id)) return;
+            seen.add(p.id);
+            const tag = p.status === 'queued' ? '隊列' : (p.status === 'completed' ? '已完成' : '進行中');
+            options.push(`<option value="${p.id}">${escapeHtml(projectDisplayName(p))}（${tag}）</option>`);
+          });
+          const sel = document.getElementById('paProjectId');
+          sel.innerHTML = options.join('');
+          sel.value = projId || '';
+          const chosen = state.db.projects.find(x => x.id === (projId || sel.value));
+          document.getElementById('paPrompt').value = (chosen && chosen.pastedPrompt) || '';
+          document.getElementById('paResponse').value = (chosen && chosen.pastedResponse) || '';
+          document.getElementById('paTaskSummary').value = (chosen && chosen.aiTaskSummary) || '';
+          document.getElementById('paResultSummary').value = (chosen && (chosen.aiResultSummary || chosen.aiStageNote)) || '';
+          document.getElementById('paAiHint').textContent = aiConfigHintText();
+          document.getElementById('pasteAiModal').classList.add('open');
+        },
+        async summarizePastedPrompt() {
+          const prompt = document.getElementById('paPrompt').value.trim();
+          if (!prompt) {
+            showToast('⚠️ 請先貼上 Prompt');
+            return;
+          }
+          if (!isBuiltinAiConfigured()) {
+            showToast('💡 尚未設定內置 AI。你可以先手寫短摘要，或去設定頁填 API。');
+            return;
+          }
+          const btn = document.getElementById('paSumPromptBtn');
+          if (btn) { btn.disabled = true; btn.classList.add('ai-busy'); btn.textContent = '✨ 總結緊…'; }
+          try {
+            const out = await callBuiltinAI(
+              '你是粵語（香港）助手，協助管理 AI 生產線任務。請用一兩句精煉中文總結使用者交給 AI 工具的 prompt：這是一個什麼任務、目的是做什麼。只輸出摘要本身，不要前言。',
+              prompt.slice(0, 12000)
+            );
+            document.getElementById('paTaskSummary').value = out;
+            showToast('✨ 已總結任務目的，你可以再手動改');
+          } catch (err) {
+            showToast(err && err.message === 'NOT_CONFIGURED' ? '💡 請先喺設定頁填寫內置 AI 的 API Key、Base URL 同 Model' : ('⚠️ ' + (err && err.message ? err.message : '內置 AI 呼叫失敗')));
+          } finally {
+            if (btn) { btn.disabled = false; btn.classList.remove('ai-busy'); btn.textContent = '✨ 一鍵總結呢個任務目的'; }
+          }
+        },
+        async analyzePastedResponse() {
+          const responseText = document.getElementById('paResponse').value.trim();
+          if (!responseText) {
+            showToast('⚠️ 請先貼上工具嘅 AI 回覆');
+            return;
+          }
+          if (!isBuiltinAiConfigured()) {
+            showToast('💡 尚未設定內置 AI。你可以先手寫進度／完成摘要，或去設定頁填 API。');
+            return;
+          }
+          const prompt = document.getElementById('paPrompt').value.trim();
+          const task = document.getElementById('paTaskSummary').value.trim();
+          const btn = document.getElementById('paAnalyzeBtn');
+          if (btn) { btn.disabled = true; btn.classList.add('ai-busy'); btn.textContent = '✨ 分析緊…'; }
+          try {
+            const out = await callBuiltinAI(
+              '你是粵語（香港）助手，協助判斷 AI 工具任務去到邊。請閱讀任務目的與工具回覆，輸出三行：\n階段：進行中／待驗收／已完成\n摘要：（兩句內說明完成咗啲乜、仲差啲乜）\n建議：（一句，例如可以標記完成上菜，或繼續修整驗證）。只輸出這三行。',
+              `任務目的：${task || '（未提供）'}\n原始 prompt：${prompt.slice(0, 4000) || '（未提供）'}\n工具回覆：${responseText.slice(0, 12000)}`
+            );
+            document.getElementById('paResultSummary').value = out;
+            showToast('✨ 已分析進度，你可以再手動改');
+          } catch (err) {
+            showToast(err && err.message === 'NOT_CONFIGURED' ? '💡 請先喺設定頁填寫內置 AI 的 API Key、Base URL 同 Model' : ('⚠️ ' + (err && err.message ? err.message : '內置 AI 呼叫失敗')));
+          } finally {
+            if (btn) { btn.disabled = false; btn.classList.remove('ai-busy'); btn.textContent = '✨ 一鍵分析進度 / 完咗未'; }
+          }
+        },
+        savePastedAi(markComplete) {
+          const toolId = document.getElementById('paToolId').value;
+          const projId = document.getElementById('paProjectId').value;
+          const prompt = document.getElementById('paPrompt').value.trim();
+          const responseText = document.getElementById('paResponse').value.trim();
+          const taskSummary = document.getElementById('paTaskSummary').value.trim();
+          const resultSummary = document.getElementById('paResultSummary').value.trim();
+          if (!projId) {
+            showToast('⚠️ 請先揀一個任務，或用「用摘要開一個新任務」');
+            return;
+          }
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          if (prompt) p.pastedPrompt = prompt;
+          if (responseText) p.pastedResponse = responseText;
+          if (taskSummary) p.aiTaskSummary = taskSummary;
+          if (resultSummary) {
+            p.aiResultSummary = resultSummary;
+            const stageLine = resultSummary.split(/\r?\n/).find(line => /階段/.test(line));
+            if (stageLine) p.aiStageNote = stageLine.replace(/^階段[:：]\s*/, '');
+            if (!p.progressNote) p.progressNote = resultSummary.split(/\r?\n/).filter(Boolean)[0].slice(0, 180);
+          } else if (taskSummary && !p.progressNote) {
+            p.progressNote = taskSummary.slice(0, 180);
+          }
+          p.isSample = false;
+          const tool = state.db.tools.find(t => t.id === (p.toolId || toolId));
+          addLog('progress_update', tool, p, 0, resultSummary || taskSummary || '已儲存貼上內容', { aiSummary: resultSummary || taskSummary });
+          if (markComplete) {
+            this.closeModal('pasteAiModal');
+            this.completeProject(p.id);
+            return;
+          }
+          persistState();
+          renderAll();
+          this.closeModal('pasteAiModal');
+          showToast('💾 已儲存貼上內容同摘要');
+        },
+        savePastedAiAsNew() {
+          const toolId = document.getElementById('paToolId').value;
+          const taskSummary = document.getElementById('paTaskSummary').value.trim();
+          const resultSummary = document.getElementById('paResultSummary').value.trim();
+          const prompt = document.getElementById('paPrompt').value.trim();
+          const responseText = document.getElementById('paResponse').value.trim();
+          const name = (taskSummary || prompt || '未命名任務').split(/\r?\n/)[0].replace(/^任務摘要[:：]\s*/, '').slice(0, 80) || '未命名任務';
+          const tool = toolId ? state.db.tools.find(t => t.id === toolId) : null;
+          const now = nowTs();
+          const newProj = {
+            id: 'proj_' + now + '_' + Math.random().toString(36).slice(2, 6),
+            name,
+            toolId: tool ? tool.id : null,
+            preferredToolId: tool ? tool.id : null,
+            status: 'queued',
+            directories: [],
+            progressNote: taskSummary || '',
+            cookMode: 'braise',
+            estimatedMinutes: 45,
+            startedAt: now,
+            currentRunStartedAt: null,
+            accumulatedMinutes: 0,
+            completedAt: null,
+            qaChecklist: { refined: false, verified: false, deployed: false },
+            feedbackCount: 0,
+            feedbackLogs: [],
+            isSample: false,
+            pastedPrompt: prompt,
+            pastedResponse: responseText,
+            aiTaskSummary: taskSummary,
+            aiResultSummary: resultSummary,
+            queueOrder: tool ? nextQueueOrder(tool.id) : 0
+          };
+          state.db.projects.push(newProj);
+          let kind = 'prep';
+          if (tool) {
+            kind = applyProjectToTool(newProj, tool, 'auto');
+            addLog(kind === 'running' ? 'start' : 'queue', tool, newProj, 0, '由貼上 Prompt 開新任務');
+          } else {
+            addLog('queue', null, newProj, 0, '由貼上 Prompt 加入備料區');
+          }
+          persistState();
+          renderAll();
+          this.closeModal('pasteAiModal');
+          showToast(kind === 'running' ? `🔥 已用摘要開新任務並開火：${name}` : `🧺 已用摘要開新任務：${name}`);
+        },
+        openBuiltinAiModal() {
+          document.getElementById('baCfgHint').textContent = aiConfigHintText();
+          document.getElementById('builtinAiModal').classList.add('open');
+        },
+        async runBuiltinAi(kind) {
+          if (!isBuiltinAiConfigured()) {
+            showToast('💡 尚未設定內置 AI。請先到「☁️ Google 雲端設定精靈」頁填 API Key、Base URL 同 Model。');
+            return;
+          }
+          const input = (document.getElementById('baInput').value || '').trim();
+          let system = '你是粵語（香港）廚房助理，幫忙善用多個已訂閱 AI 工具嘅閒置算力。回覆精簡、具體、用繁體中文。';
+          let user = input;
+          if (kind === 'kitchen') {
+            system += '請根據目前廚房狀態，指出邊個爐頭閒置、邊啲任務待驗收、建議下一步可以派咩工作。';
+            user = '目前廚房狀態：\n' + describeKitchenForAi() + (input ? '\n\n用家補充：\n' + input : '');
+          } else if (kind === 'polish') {
+            if (!input) { showToast('⚠️ 請先貼上要潤色嘅文字'); return; }
+            system += '請潤色以下文字，保持原意，使更清楚、精煉。只輸出潤色後文本。';
+          } else if (kind === 'advice') {
+            if (!input) { showToast('⚠️ 請先貼上要討論嘅內容'); return; }
+            system += '請針對以下內容給予實用意見與下一步建議。';
+          } else if (kind === 'summarize') {
+            if (!input) { showToast('⚠️ 請先貼上要總結嘅文字'); return; }
+            system += '請用三至六點總結以下內容，只輸出總結。';
+          }
+          const btns = ['baKitchenBtn', 'baPolishBtn', 'baAdviceBtn', 'baSummarizeBtn'];
+          btns.forEach(id => { const b = document.getElementById(id); if (b) { b.disabled = true; b.classList.add('ai-busy'); } });
+          try {
+            const out = await callBuiltinAI(system, user.slice(0, 14000));
+            document.getElementById('baOutput').value = out;
+            showToast('✨ 內置 AI 已完成分析');
+          } catch (err) {
+            showToast('⚠️ ' + (err && err.message ? err.message : '內置 AI 呼叫失敗'));
+          } finally {
+            btns.forEach(id => { const b = document.getElementById(id); if (b) { b.disabled = false; b.classList.remove('ai-busy'); } });
+          }
+        },
+
         saveCloudSetup() {
           const email = document.getElementById('cfgOwnerEmail').value.trim();
           const raw = document.getElementById('cfgFirebaseRaw').value;
@@ -3199,6 +4328,7 @@ service cloud.firestore {
       };
 
       // 啟動渲染及檢查雲端狀態
+      checkQuotaResets({ silent: true });
       renderAll();
       initFirebaseIfConfigured();
     })();
