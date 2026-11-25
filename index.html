@@ -1,0 +1,3205 @@
+<!DOCTYPE html>
+<html lang="zh-HK" data-theme="dark"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 生產線廚房控制台 | AI Kitchen Control Center</title>
+  <!-- 內嵌雲端設定槽（可透過網頁內「匯出已綁定設定 HTML」自動寫入，無需手動改 Code） -->
+  <script id="embedded-cloud-config" type="application/json">{"firebaseConfig":{"apiKey":"AIzaSyAVuDwCJq79SESYCEVfxWNaQ9Me35vGkTo","authDomain":"ai-production-line-mgt.firebaseapp.com","projectId":"ai-production-line-mgt","storageBucket":"ai-production-line-mgt.firebasestorage.app","messagingSenderId":"1026406616564","appId":"1:1026406616564:web:ba76ffec6bbb19172cfda1"},"ownerEmail":"w.cheung815@gmail.com"}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Sans+HK:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0b1120;
+      --bg-surface: #131c31;
+      --bg-elevated: #1c2842;
+      --bg-input: #0f172a;
+      --border-subtle: rgba(148, 163, 184, 0.16);
+      --border-strong: rgba(148, 163, 184, 0.3);
+      --text-main: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-primary: #f97316;
+      --accent-primary-hover: #ea580c;
+      --status-idle: #10b981;
+      --status-idle-bg: rgba(16, 185, 129, 0.12);
+      --status-run: #f97316;
+      --status-run-bg: rgba(249, 115, 22, 0.13);
+      --status-qa: #eab308;
+      --status-qa-bg: rgba(234, 179, 8, 0.14);
+      --status-cool: #38bdf8;
+      --status-cool-bg: rgba(56, 189, 248, 0.12);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.14);
+      --purple: #a855f7;
+      --shadow-card: 0 10px 28px -6px rgba(0, 0, 0, 0.45);
+      --radius-lg: 16px;
+      --radius-md: 11px;
+      --radius-sm: 8px;
+    }
+
+    [data-theme="light"] {
+      --bg-base: #f1f5f9;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f8fafc;
+      --bg-input: #f8fafc;
+      --border-subtle: rgba(15, 23, 42, 0.1);
+      --border-strong: rgba(15, 23, 42, 0.2);
+      --text-main: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --shadow-card: 0 8px 24px -6px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans HK', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.55;
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    code, .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      transition: all 0.18s ease;
+    }
+
+    /* Top Navigation & Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(19, 28, 49, 0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 14px 24px;
+    }
+    [data-theme="light"] .top-header {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #f97316, #eab308);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .header-stats {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-elevated);
+    }
+    .stat-pill.run { border-color: rgba(249,115,22,0.4); color: #fb923c; background: var(--status-run-bg); }
+    .stat-pill.qa { border-color: rgba(234,179,8,0.5); color: #facc15; background: var(--status-qa-bg); }
+    .stat-pill.idle { border-color: rgba(16,185,129,0.45); color: #34d399; background: var(--status-idle-bg); }
+    [data-theme="light"] .stat-pill.run { color: #c2410c; }
+    [data-theme="light"] .stat-pill.qa { color: #a16207; }
+    [data-theme="light"] .stat-pill.idle { color: #047857; }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .icon-btn {
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .icon-btn:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+    }
+
+    .sync-badge {
+      padding: 7px 13px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+    }
+    .sync-badge.cloud {
+      background: rgba(16, 185, 129, 0.14);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    [data-theme="light"] .sync-badge.cloud { color: #047857; }
+    .sync-badge.local {
+      background: rgba(56, 189, 248, 0.13);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+    }
+    [data-theme="light"] .sync-badge.local { color: #0369a1; }
+
+    /* Navigation Tabs */
+    .nav-bar {
+      max-width: 1440px;
+      margin: 16px auto 0;
+      padding: 0 24px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-bar::-webkit-scrollbar { display: none; }
+
+    .nav-tab {
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-tab:hover {
+      color: var(--text-main);
+      border-color: var(--border-strong);
+    }
+    .nav-tab.active {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.3);
+    }
+
+    .badge-count {
+      padding: 1px 7px;
+      border-radius: 99px;
+      font-size: 11.5px;
+      background: rgba(255, 255, 255, 0.22);
+      color: inherit;
+    }
+
+    /* Main Container */
+    .main-container {
+      max-width: 1440px;
+      margin: 20px auto 0;
+      padding: 0 24px;
+    }
+
+    /* Banners */
+    .chef-banner {
+      background: linear-gradient(90deg, rgba(249, 115, 22, 0.14), rgba(234, 179, 8, 0.08));
+      border: 1px solid rgba(249, 115, 22, 0.32);
+      border-radius: var(--radius-lg);
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .chef-banner-text {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .sample-banner {
+      background: rgba(168, 85, 247, 0.12);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent-primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-primary-hover); transform: translateY(-1px); }
+
+    .btn-idle {
+      background: #10b981;
+      color: #fff;
+    }
+    .btn-idle:hover { background: #059669; transform: translateY(-1px); }
+
+    .btn-qa {
+      background: #eab308;
+      color: #0f172a;
+    }
+    .btn-qa:hover { background: #ca8a04; color: #fff; }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover { background: var(--border-subtle); }
+
+    .btn-danger {
+      background: var(--danger-bg);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #f87171;
+    }
+    [data-theme="light"] .btn-danger { color: #dc2626; }
+    .btn-danger:hover { background: #ef4444; color: #fff; }
+
+    .btn-sm {
+      padding: 6px 11px;
+      font-size: 12.5px;
+    }
+
+    /* Stove Grid (10 Woks Metaphor) */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stoves-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 480px) {
+      .stoves-grid { grid-template-columns: 1fr; }
+      .main-container, .nav-bar, .top-header { padding-left: 14px; padding-right: 14px; }
+    }
+
+    .stove-card {
+      background: var(--bg-surface);
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--border-subtle);
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.18s ease, border-color 0.2s ease;
+      position: relative;
+    }
+
+    .stove-card.state-idle { border-color: rgba(16, 185, 129, 0.45); }
+    .stove-card.state-running { border-color: rgba(249, 115, 22, 0.55); }
+    .stove-card.state-overdue {
+      border-color: #eab308;
+      box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2), var(--shadow-card);
+    }
+    .stove-card.state-review {
+      border-color: #a855f7;
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18), var(--shadow-card);
+    }
+    .stove-card.state-cooldown { border-color: rgba(56, 189, 248, 0.4); opacity: 0.92; }
+
+    .stove-top {
+      padding: 15px 18px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .tool-identity {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+    }
+
+    .tool-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .tool-name {
+      font-size: 15.5px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .tool-workflow {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .status-chip {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .chip-idle { background: var(--status-idle-bg); color: #34d399; border: 1px solid rgba(16,185,129,0.35); }
+    .chip-running { background: var(--status-run-bg); color: #fb923c; border: 1px solid rgba(249,115,22,0.4); }
+    .chip-overdue { background: var(--status-qa-bg); color: #facc15; border: 1px solid #eab308; animation: pulseGlow 1.6s infinite; }
+    .chip-review { background: rgba(168, 85, 247, 0.16); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.45); }
+    .chip-cool { background: var(--status-cool-bg); color: #38bdf8; border: 1px solid rgba(56,189,248,0.35); }
+
+    [data-theme="light"] .chip-idle { color: #047857; }
+    [data-theme="light"] .chip-running { color: #c2410c; }
+    [data-theme="light"] .chip-overdue { color: #854d0e; }
+    [data-theme="light"] .chip-review { color: #7e22ce; }
+    [data-theme="light"] .chip-cool { color: #0369a1; }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    /* Quota Bar inside Stove */
+    .quota-strip {
+      padding: 8px 18px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .quota-bar-wrap {
+      flex: 1;
+      height: 7px;
+      background: var(--bg-input);
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+    }
+
+    .quota-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.3s ease;
+    }
+
+    .stove-body {
+      padding: 16px 18px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    /* Active Dish Info */
+    .project-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .project-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .cook-badge {
+      font-size: 11.5px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    /* Timer Progress Box */
+    .timer-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+    }
+
+    .timer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      margin-bottom: 6px;
+    }
+
+    .timer-progress-track {
+      height: 6px;
+      background: var(--bg-elevated);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .timer-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f97316, #eab308);
+      border-radius: 99px;
+      transition: width 0.5s linear;
+    }
+    .timer-progress-fill.overdue {
+      background: linear-gradient(90deg, #eab308, #ef4444);
+    }
+
+    /* Inline 1-Sentence Progress */
+    .progress-inline-box {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field-mini-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .inline-progress-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .inline-input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+      font-size: 13px;
+      color: var(--text-main);
+    }
+    .inline-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+    }
+
+    /* Directories Pills */
+    .dir-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .dir-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+
+    .dir-path {
+      font-family: 'JetBrains Mono', monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #93c5fd;
+    }
+    [data-theme="light"] .dir-path { color: #1d4ed8; }
+
+    .copy-mini-btn {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .copy-mini-btn:hover {
+      color: var(--text-main);
+      border-color: var(--border-strong);
+    }
+
+    /* QA 3-Step Checklist */
+    .qa-box {
+      background: rgba(168, 85, 247, 0.07);
+      border: 1px dashed rgba(168, 85, 247, 0.35);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+    }
+
+    .qa-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #c084fc;
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    [data-theme="light"] .qa-title { color: #7e22ce; }
+
+    .qa-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .qa-check-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .qa-check-item input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: #10b981;
+      cursor: pointer;
+    }
+
+    /* Idle Empty Wok Box */
+    .idle-empty-box {
+      flex: 1;
+      border: 1.5px dashed rgba(16, 185, 129, 0.35);
+      background: rgba(16, 185, 129, 0.05);
+      border-radius: var(--radius-md);
+      padding: 22px 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .idle-wok-icon {
+      font-size: 30px;
+    }
+
+    .idle-time-note {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .stove-footer {
+      padding: 12px 18px;
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Prep Queue Section */
+    .prep-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-top: 10px;
+    }
+
+    .prep-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .prep-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Tables & Filters */
+    .panel-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      background: var(--bg-input);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-size: 13.5px;
+      color: var(--text-main);
+      width: 100%;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
+      font-weight: 700;
+    }
+
+    tr:hover td {
+      background: rgba(148, 163, 184, 0.04);
+    }
+
+    /* KPI Analytics Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .kpi-label {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 6px 0 4px;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Bar Chart Rows */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .bar-label {
+      width: 170px;
+      font-size: 13px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .bar-track {
+      flex: 1;
+      height: 14px;
+      background: var(--bg-input);
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #f97316, #10b981);
+    }
+    .bar-val {
+      width: 90px;
+      text-align: right;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.55);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .modal-body {
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .modal-footer {
+      padding: 15px 22px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-elevated);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Setup Steps Guide */
+    .step-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+    .step-num {
+      display: inline-flex;
+      width: 24px;
+      height: 24px;
+      border-radius: 99px;
+      background: var(--accent-primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+    }
+    .copy-block {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 8px;
+      color: #93c5fd;
+    }
+    [data-theme="light"] .copy-block { color: #1e40af; }
+
+    /* Auth Lock Screen Overlay */
+    .auth-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--bg-base);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-gate.active { display: flex; }
+
+    .auth-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 20px;
+      padding: 36px 30px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .google-btn {
+      width: 100%;
+      padding: 13px 20px;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #1f2937;
+      font-size: 15px;
+      font-weight: 700;
+      border: 1px solid #d1d5db;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 22px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .google-btn:hover { background: #f9fafb; transform: translateY(-1px); }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: #1e293b;
+      color: #f8fafc;
+      border-left: 4px solid var(--accent-primary);
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+      animation: slideIn 0.22s ease;
+      max-width: 360px;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .feedback-history-list {
+      margin-top: 6px;
+      padding-left: 12px;
+      border-left: 2px solid rgba(249, 115, 22, 0.4);
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 私人專用 Google 登入鎖定畫面（當已設定雲端資料庫且未登入時自動攔截） -->
+  <div id="authGate" class="auth-gate">
+    <div class="auth-box">
+      <div class="brand-logo" style="width:58px;height:58px;font-size:30px;margin:0 auto 16px;">🍳</div>
+      <h2 style="font-size:21px;margin-bottom:8px;">AI 生產線私人廚房控制台</h2>
+      <p style="font-size:13.5px;color:var(--text-secondary);">此系統為私人專用。請使用授權嘅 Google 帳號登入以存取雲端 Database 及管理所有 AI 工具進度。</p>
+      <div id="authErrorMsg" style="display:none;margin-top:14px;padding:10px;border-radius:8px;background:var(--danger-bg);color:#f87171;font-size:12.5px;text-align:left;"></div>
+      <button class="google-btn" onclick="window.app.signInWithGoogle()">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+        使用 Google 帳號登入
+      </button>
+      <div style="margin-top:18px;display:flex;justify-content:center;gap:14px;">
+        <button style="font-size:12.5px;color:var(--text-secondary);text-decoration:underline;" onclick="window.app.bypassToSetup()">⚙️ 修改雲端連結設定 / 本地預覽</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 頂部導航狀態列 -->
+  <header class="top-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">🍳</div>
+        <div>
+          <div class="brand-title">AI 生產線廚房控制台</div>
+          <div class="brand-sub">一人管十鑊 · 榨乾算力 · 修整驗證 Deploy 閉環管理</div>
+        </div>
+      </div>
+
+      <div class="header-stats" id="headerStats"></div>
+
+      <div class="header-actions">
+        <button class="icon-btn" id="soundToggleBtn" onclick="window.app.toggleSound()" title="夠鐘試味提示鈴聲">🔔 響鈴: 開</button>
+        <button class="icon-btn" id="themeToggleBtn" onclick="window.app.toggleTheme()" title="切換深淺色主題">🌙 主題</button>
+        <div id="syncStatusBadge" class="sync-badge local" onclick="window.app.switchTab('cloud')">💻 載入中...</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 分頁選單 -->
+  <nav class="nav-bar" id="navBar">
+    <button class="nav-tab active" data-tab="kitchen" onclick="window.app.switchTab('kitchen')">🔥 廚房爐頭總覽 <span class="badge-count" id="navCountStoves">0</span></button>
+    <button class="nav-tab" data-tab="projects" onclick="window.app.switchTab('projects')">📋 專案紀錄與搜尋 <span class="badge-count" id="navCountProjects">0</span></button>
+    <button class="nav-tab" data-tab="analytics" onclick="window.app.switchTab('analytics')">📊 算力效益檢討</button>
+    <button class="nav-tab" data-tab="tools" onclick="window.app.switchTab('tools')">🛠️ 訂閱工具加減</button>
+    <button class="nav-tab" data-tab="cloud" onclick="window.app.switchTab('cloud')">☁️ Google 雲端設定精靈</button>
+  </nav>
+
+  <!-- 主內容區 -->
+  <main class="main-container" id="mainView"></main>
+
+  <!-- 彈出式視窗：新增 / 編輯 Project（落鍋或備料） -->
+  <div id="projectModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title" id="projectModalTitle">🔥 落鍋開新 Project</div>
+        <button class="icon-btn btn-sm" onclick="window.app.closeModal('projectModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pmProjectId">
+        <div class="form-group">
+          <label class="form-label">1. 分配去邊個 AI 爐頭（工具）？</label>
+          <select id="pmToolId" class="form-select"></select>
+          <span class="form-hint">揀「🧺 先擺入備料待煮區」可暫存排隊，等有爐頭閒置時一鍵落鍋。</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">2. Project 叫咩名？ *</label>
+          <input type="text" id="pmName" class="form-input" placeholder="例如：Grok 自動化客服 Bot / SaaS 會員系統重構">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">3. 用到電腦入面邊幾個 File Directory？（可貼上多個路徑，每行一個）</label>
+          <textarea id="pmDirs" rows="3" class="form-textarea mono" placeholder="例如：
+D:\Projects\grok-trading-bot
+D:\Projects\shared-prompts"></textarea>
+          <span class="form-hint">貼上去之後，爐頭卡上面會有「一鍵複製路徑」掣，方便隨時貼返入 VS Code / Cline / Terminal。</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">4. 進度去到邊？（用一句說話講低）</label>
+          <input type="text" id="pmProgress" class="form-input" placeholder="例如：剛放低 Prompt 叫 Cline 寫 API 模組，等佢跑完測試">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">5. 火候模式（預計要跑幾耐？）</label>
+            <select id="pmCookMode" class="form-select" onchange="window.app.onCookModeChange()">
+              <option value="quick">⚡ 快炒（約 15 分鐘）</option>
+              <option value="braise" selected="">🍲 慢燜入味（約 45 分鐘）</option>
+              <option value="bake">🔥 長焗大任務（約 120 分鐘）</option>
+              <option value="custom">⏱️ 自訂分鐘數</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">預計分鐘數（夠鐘會響鈴提你試味）</label>
+            <input type="number" id="pmEstMinutes" class="form-input" min="1" max="1440" value="45">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.app.closeModal('projectModal')">取消</button>
+        <button class="btn btn-primary" onclick="window.app.saveProjectModal()">🚀 儲存並確認</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈出式視窗：唔 Work 畀 Feedback 回鍋重炒 -->
+  <div id="feedbackModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:480px;">
+      <div class="modal-header">
+        <div class="modal-title">🔄 唔 Work · 畀 Feedback 回鍋重炒</div>
+        <button class="icon-btn btn-sm" onclick="window.app.closeModal('feedbackModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fmProjectId">
+        <div class="form-group">
+          <label class="form-label">邊度唔 Work？你畀咗咩 Feedback 叫佢做好啲？</label>
+          <textarea id="fmNote" rows="3" class="form-textarea" placeholder="例如：Deploy 後發現 API 報 CORS 錯，已貼 Error Log 叫佢修正並加返測試"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">同時更新「一句講進度」：</label>
+          <input type="text" id="fmProgress" class="form-input" placeholder="例如：第 2 輪回鍋執緊 CORS 同登入問題">
+        </div>
+        <div class="form-group">
+          <label class="form-label">預計今輪要再焗幾耐（分鐘）？</label>
+          <input type="number" id="fmMinutes" class="form-input" min="1" max="1440" value="25">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.app.closeModal('feedbackModal')">取消</button>
+        <button class="btn btn-primary" onclick="window.app.submitFeedbackRework()">🔥 記錄並重新計時開火</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈出式視窗：新增 / 編輯 AI 訂閱工具（爐頭） -->
+  <div id="toolModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title" id="toolModalTitle">🛠️ 新增 AI 訂閱工具（加新鑊）</div>
+        <button class="icon-btn btn-sm" onclick="window.app.closeModal('toolModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="tmId">
+        <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">圖示 Emoji</label>
+            <input type="text" id="tmIcon" class="form-input" value="🤖" style="text-align:center;font-size:20px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">AI 工具 / 帳號名稱 *</label>
+            <input type="text" id="tmName" class="form-input" placeholder="例如：Claude Pro / Cursor / Gemini 帳號 3">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">常用工作方式 / 搭配工具</label>
+          <input type="text" id="tmWorkflow" class="form-input" placeholder="例如：VS Code + Cline / Web 對話 / Bot 自動跑">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">月費成本（HK$，方便計性價比）</label>
+            <input type="number" id="tmCost" class="form-input" min="0" step="1" value="150">
+          </div>
+          <div class="form-group">
+            <label class="form-label">目前算力 / Quota 已用百分比 (%)</label>
+            <input type="number" id="tmQuota" class="form-input" min="0" max="100" value="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">算力計算 / 重置備註</label>
+          <input type="text" id="tmResetNote" class="form-input" placeholder="例如：每 5 小時重置額度 / 每月 1 號重置字數">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.app.closeModal('toolModal')">取消</button>
+        <button class="btn btn-primary" onclick="window.app.saveToolModal()">💾 儲存工具</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 通知容器 -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    (function() {
+      // 在任何動態渲染前先保存乾淨 HTML 模板，以便「一鍵匯出已綁定雲端設定嘅 index.html」功能運作
+      const CLEAN_ROOT_CLONE = document.documentElement.cloneNode(true);
+
+      const STORAGE_KEY_DATA = 'ai_kitchen_local_db_v1';
+      const STORAGE_KEY_CLOUD = 'ai_kitchen_cloud_cfg_v1';
+      const STORAGE_KEY_PREFS = 'ai_kitchen_prefs_v1';
+
+      const nowTs = () => Date.now();
+
+      // 預設為用家度身訂造嘅 5 個 AI 爐頭（包含兩個 Gemini Account、智譜 GLM VS Code Cline、Grok、ElevenLabs）
+      function createStarterState() {
+        const t = nowTs();
+        return {
+          tools: [
+            {
+              id: 'tool_gemini_1',
+              name: 'Gemini（帳號 1）',
+              icon: '✨',
+              workflow: 'Gemini Web / Deep Research / Canvas',
+              monthlyCostHKD: 158,
+              quotaUsedPct: 35,
+              quotaResetLabel: '每日 / 滾動視窗算力額度',
+              cooldownUntil: null,
+              lastActiveEndedAt: t - 55 * 60 * 1000,
+              archived: false,
+              order: 1
+            },
+            {
+              id: 'tool_gemini_2',
+              name: 'Gemini（帳號 2）',
+              icon: '🌟',
+              workflow: '第二分身帳號 · 雙開並行跑研究/任務',
+              monthlyCostHKD: 158,
+              quotaUsedPct: 10,
+              quotaResetLabel: '每日 / 滾動視窗算力額度',
+              cooldownUntil: null,
+              lastActiveEndedAt: t - 190 * 60 * 1000,
+              archived: false,
+              order: 2
+            },
+            {
+              id: 'tool_glm_cline',
+              name: '智譜 GLM（z.ai Coding Plan）',
+              icon: '🧠',
+              workflow: 'VS Code + Cline 自動寫 Code 主力',
+              monthlyCostHKD: 110,
+              quotaUsedPct: 62,
+              quotaResetLabel: 'Coding Plan 高速算力配額',
+              cooldownUntil: null,
+              lastActiveEndedAt: t,
+              archived: false,
+              order: 3
+            },
+            {
+              id: 'tool_grok',
+              name: 'Grok（Grok Bot）',
+              icon: '🚀',
+              workflow: 'Grok Bot / 即時推理與自動化任務',
+              monthlyCostHKD: 235,
+              quotaUsedPct: 48,
+              quotaResetLabel: '滾動視窗推理額度',
+              cooldownUntil: null,
+              lastActiveEndedAt: t,
+              archived: false,
+              order: 4
+            },
+            {
+              id: 'tool_elevenlabs',
+              name: 'ElevenLabs',
+              icon: '🎙️',
+              workflow: 'Monthly Subscription · AI 語音合成配音',
+              monthlyCostHKD: 172,
+              quotaUsedPct: 20,
+              quotaResetLabel: '每月字數 Credits 額度（唔用會過期）',
+              cooldownUntil: null,
+              lastActiveEndedAt: t - 420 * 60 * 1000,
+              archived: false,
+              order: 5
+            }
+          ],
+          projects: [
+            {
+              id: 'proj_sample_glm',
+              name: '【範例】AI 生產線後台 API 與自動化腳本',
+              toolId: 'tool_glm_cline',
+              status: 'running',
+              directories: ['D:\\Projects\\ai-pipeline-core', 'D:\\Projects\\cline-rules'],
+              progressNote: 'Cline 正在 VS Code 自動寫緊資料庫連接模組，等佢跑埋測試',
+              cookMode: 'braise',
+              estimatedMinutes: 45,
+              startedAt: t - 22 * 60 * 1000,
+              currentRunStartedAt: t - 22 * 60 * 1000,
+              accumulatedMinutes: 0,
+              completedAt: null,
+              qaChecklist: { refined: false, verified: false, deployed: false },
+              feedbackCount: 0,
+              feedbackLogs: [],
+              isSample: true
+            },
+            {
+              id: 'proj_sample_grok',
+              name: '【範例】Grok 每日市場情報收集 Bot',
+              toolId: 'tool_grok',
+              status: 'review',
+              directories: ['D:\\Projects\\grok-news-bot'],
+              progressNote: 'Bot 主程式已生成完畢，等緊我本地驗證同 Deploy 睇下 Work 唔 Work',
+              cookMode: 'quick',
+              estimatedMinutes: 20,
+              startedAt: t - 50 * 60 * 1000,
+              currentRunStartedAt: t - 25 * 60 * 1000,
+              accumulatedMinutes: 25,
+              completedAt: null,
+              qaChecklist: { refined: true, verified: false, deployed: false },
+              feedbackCount: 1,
+              feedbackLogs: [
+                { at: t - 28 * 60 * 1000, note: '第一版 JSON 格式有少少走位，已畀 Feedback 叫 Grok 執返正 schema' }
+              ],
+              isSample: true
+            },
+            {
+              id: 'proj_sample_prep',
+              name: '【範例待煮】新教學影片廣東話 AI 旁白配音',
+              toolId: null,
+              preferredToolId: 'tool_elevenlabs',
+              status: 'queued',
+              directories: ['D:\\Media\\youtube-ep12\\audio'],
+              progressNote: '講稿已經執好，隨時可以擺落 ElevenLabs 爐頭生成語音',
+              cookMode: 'quick',
+              estimatedMinutes: 15,
+              startedAt: t - 60 * 60 * 1000,
+              currentRunStartedAt: null,
+              accumulatedMinutes: 0,
+              completedAt: null,
+              qaChecklist: { refined: false, verified: false, deployed: false },
+              feedbackCount: 0,
+              feedbackLogs: [],
+              isSample: true
+            }
+          ],
+          logs: [
+            {
+              id: 'log_sample_1',
+              at: t - 50 * 60 * 1000,
+              type: 'start',
+              toolId: 'tool_grok',
+              toolName: 'Grok（Grok Bot）',
+              projectId: 'proj_sample_grok',
+              projectName: '【範例】Grok 每日市場情報收集 Bot',
+              durationMinutes: 0,
+              detail: '落鍋開火'
+            },
+            {
+              id: 'log_sample_2',
+              at: t - 28 * 60 * 1000,
+              type: 'feedback_rework',
+              toolId: 'tool_grok',
+              toolName: 'Grok（Grok Bot）',
+              projectId: 'proj_sample_grok',
+              projectName: '【範例】Grok 每日市場情報收集 Bot',
+              durationMinutes: 22,
+              detail: '第一版 JSON 格式有少少走位，已畀 Feedback 叫 Grok 執返正 schema'
+            }
+          ]
+        };
+      }
+
+      // 讀取內嵌或本地儲存的雲端設定
+      function loadCloudConfig() {
+        try {
+          const embeddedEl = document.getElementById('embedded-cloud-config');
+          if (embeddedEl && embeddedEl.textContent.trim()) {
+            const parsed = JSON.parse(embeddedEl.textContent.trim());
+            if (parsed && parsed.firebaseConfig && parsed.firebaseConfig.apiKey) {
+              return parsed;
+            }
+          }
+        } catch (e) {}
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY_CLOUD);
+          if (saved) return JSON.parse(saved);
+        } catch (e) {}
+        return { firebaseConfig: null, ownerEmail: '' };
+      }
+
+      function loadPrefs() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+          if (saved) return Object.assign({ sound: true, theme: 'dark', analyticsDays: 30 }, JSON.parse(saved));
+        } catch (e) {}
+        return { sound: true, theme: 'dark', analyticsDays: 30 };
+      }
+
+      const state = {
+        db: createStarterState(),
+        cloudCfg: loadCloudConfig(),
+        prefs: loadPrefs(),
+        activeTab: 'kitchen',
+        projSearch: '',
+        projFilterStatus: 'all',
+        projFilterTool: 'all',
+        firebaseApp: null,
+        firestore: null,
+        auth: null,
+        currentUser: null,
+        cloudConnected: false,
+        bypassAuthLock: false,
+        unsubSnapshot: null,
+        notifiedOverdueIds: new Set(),
+        lastClientWriteId: null
+      };
+
+      // 初始化本地資料
+      try {
+        const localRaw = localStorage.getItem(STORAGE_KEY_DATA);
+        if (localRaw) {
+          const parsed = JSON.parse(localRaw);
+          if (parsed && Array.isArray(parsed.tools)) {
+            state.db = {
+              tools: parsed.tools || [],
+              projects: parsed.projects || [],
+              logs: parsed.logs || []
+            };
+          }
+        } else {
+          localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(state.db));
+        }
+      } catch (e) {}
+
+      // 套用主題與音效偏好
+      function applyPrefsUI() {
+        document.documentElement.setAttribute('data-theme', state.prefs.theme || 'dark');
+        const soundBtn = document.getElementById('soundToggleBtn');
+        if (soundBtn) soundBtn.textContent = state.prefs.sound ? '🔔 響鈴: 開' : '🔕 響鈴: 關';
+        const themeBtn = document.getElementById('themeToggleBtn');
+        if (themeBtn) themeBtn.textContent = state.prefs.theme === 'light' ? '☀️ 淺色' : '🌙 深色';
+      }
+
+      function savePrefs() {
+        localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(state.prefs));
+        applyPrefsUI();
+      }
+
+      // 廚房夠鐘清脆叮聲（Web Audio API 免外部音檔）
+      function playKitchenBell() {
+        if (!state.prefs.sound) return;
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          const ctx = new AudioCtx();
+          const playTone = (freq, delay, dur) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(0.18, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + dur);
+          };
+          playTone(880, 0, 0.45);
+          playTone(1318.5, 0.16, 0.65);
+        } catch (e) {}
+      }
+
+      function showToast(msg) {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const el = document.createElement('div');
+        el.className = 'toast';
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => {
+          el.style.opacity = '0';
+          el.style.transition = 'opacity 0.25s ease';
+          setTimeout(() => el.remove(), 260);
+        }, 3400);
+      }
+
+      function escapeHtml(str) {
+        return String(str == null ? '' : str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatDuration(mins) {
+        const m = Math.max(0, Math.round(mins));
+        if (m < 60) return m + ' 分鐘';
+        const h = Math.floor(m / 60);
+        const rem = m % 60;
+        return rem > 0 ? `${h} 小時 ${rem} 分` : `${h} 小時`;
+      }
+
+      function formatClockDiff(ms) {
+        const totalSec = Math.floor(Math.abs(ms) / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        const pad = n => String(n).padStart(2, '0');
+        return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+      }
+
+      function formatDateTime(ts) {
+        if (!ts) return '-';
+        const d = new Date(ts);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+
+      // 儲存資料（同時寫入 LocalStorage 並同步至 Google Cloud Firestore）
+      async function persistState() {
+        localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(state.db));
+        if (state.cloudConnected && state.firestore && state.currentUser && state.fbModules) {
+          try {
+            const { doc, setDoc } = state.fbModules;
+            const ref = doc(state.firestore, 'users', state.currentUser.uid, 'ai_kitchen', 'production_state');
+            const writeId = nowTs() + '_' + Math.random().toString(36).slice(2, 8);
+            state.lastClientWriteId = writeId;
+            await setDoc(ref, {
+              tools: state.db.tools,
+              projects: state.db.projects,
+              logs: state.db.logs.slice(-1500),
+              updatedAt: nowTs(),
+              updatedBy: state.currentUser.email || '',
+              clientWriteId: writeId
+            });
+          } catch (err) {
+            console.error('Firestore sync error:', err);
+            showToast('⚠️ 雲端同步失敗：請檢查網絡或 Firestore 安全規則');
+          }
+        }
+      }
+
+      function addLog(type, tool, project, durationMinutes, detail) {
+        state.db.logs.push({
+          id: 'log_' + nowTs() + '_' + Math.random().toString(36).slice(2, 6),
+          at: nowTs(),
+          type,
+          toolId: tool ? tool.id : (project ? project.toolId : null),
+          toolName: tool ? tool.name : '未指定爐頭',
+          projectId: project ? project.id : null,
+          projectName: project ? project.name : '-',
+          durationMinutes: Math.round(durationMinutes || 0),
+          detail: detail || ''
+        });
+      }
+
+      // 動態載入官方 Google Firebase SDK 並處理登入及即時同步
+      async function initFirebaseIfConfigured() {
+        updateSyncBadge();
+        const cfg = state.cloudCfg && state.cloudCfg.firebaseConfig;
+        if (!cfg || !cfg.apiKey || !cfg.projectId) {
+          document.getElementById('authGate').classList.remove('active');
+          return;
+        }
+
+        // 若喺本機雙擊 file:// 打開，提醒需要放上 GitHub Pages 才可執行 Google OAuth
+        if (window.location.protocol === 'file:') {
+          document.getElementById('authGate').classList.remove('active');
+          updateSyncBadge();
+          return;
+        }
+
+        try {
+          if (!state.fbModules) {
+            const [appMod, authMod, fsMod] = await Promise.all([
+              import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js'),
+              import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'),
+              import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js')
+            ]);
+            state.fbModules = { ...appMod, ...authMod, ...fsMod };
+          }
+
+          const { initializeApp, getApps, getAuth, GoogleAuthProvider, onAuthStateChanged, getFirestore, doc, onSnapshot, getDoc, setDoc } = state.fbModules;
+
+          if (!getApps().length) {
+            state.firebaseApp = initializeApp(cfg);
+          } else {
+            state.firebaseApp = getApps()[0];
+          }
+          state.auth = getAuth(state.firebaseApp);
+          state.firestore = getFirestore(state.firebaseApp);
+          state.googleProvider = new GoogleAuthProvider();
+
+          onAuthStateChanged(state.auth, async (user) => {
+            const authGate = document.getElementById('authGate');
+            const errBox = document.getElementById('authErrorMsg');
+            if (!user) {
+              state.currentUser = null;
+              state.cloudConnected = false;
+              if (state.unsubSnapshot) { state.unsubSnapshot(); state.unsubSnapshot = null; }
+              if (!state.bypassAuthLock) {
+                authGate.classList.add('active');
+              }
+              updateSyncBadge();
+              renderAll();
+              return;
+            }
+
+            // 檢查私人專用白名單 Email
+            const ownerEmail = (state.cloudCfg.ownerEmail || '').trim().toLowerCase();
+            if (ownerEmail && (user.email || '').toLowerCase() !== ownerEmail) {
+              errBox.style.display = 'block';
+              errBox.textContent = `🚫 存取被拒：目前登入嘅帳號 (${user.email}) 唔係系統設定嘅專用擁有者 (${ownerEmail})。`;
+              await state.fbModules.signOut(state.auth);
+              authGate.classList.add('active');
+              return;
+            }
+
+            errBox.style.display = 'none';
+            authGate.classList.remove('active');
+            state.currentUser = user;
+            state.cloudConnected = true;
+            updateSyncBadge();
+
+            // 連接並訂閱雲端 Firestore 資料
+            const stateDocRef = doc(state.firestore, 'users', user.uid, 'ai_kitchen', 'production_state');
+            try {
+              const snap = await getDoc(stateDocRef);
+              if (!snap.exists()) {
+                // 首次登入雲端：自動將現有設定與工具同步上雲端
+                await setDoc(stateDocRef, {
+                  tools: state.db.tools,
+                  projects: state.db.projects,
+                  logs: state.db.logs,
+                  updatedAt: nowTs(),
+                  updatedBy: user.email || ''
+                });
+                showToast('☁️ 首次登入成功！已自動初始化你嘅專屬雲端 Database');
+              }
+            } catch (readErr) {
+              console.error(readErr);
+              showToast('⚠️ 已登入 Google，但未能讀取 Firestore：請確認已在 Firebase 建立 Firestore 及設定規則');
+            }
+
+            if (state.unsubSnapshot) state.unsubSnapshot();
+            state.unsubSnapshot = onSnapshot(stateDocRef, (docSnap) => {
+              if (docSnap.exists()) {
+                const cloudData = docSnap.data();
+                if (cloudData && cloudData.clientWriteId && cloudData.clientWriteId === state.lastClientWriteId) {
+                  return;
+                }
+                if (cloudData && Array.isArray(cloudData.tools)) {
+                  state.db = {
+                    tools: cloudData.tools || [],
+                    projects: cloudData.projects || [],
+                    logs: cloudData.logs || []
+                  };
+                  localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(state.db));
+                  renderAll();
+                }
+              }
+            });
+          });
+        } catch (e) {
+          console.error('Firebase init failed:', e);
+          showToast('⚠️ 載入雲端模組失敗，暫以本地模式運行');
+        }
+      }
+
+      function updateSyncBadge() {
+        const badge = document.getElementById('syncStatusBadge');
+        if (!badge) return;
+        const hasCfg = !!(state.cloudCfg && state.cloudCfg.firebaseConfig && state.cloudCfg.firebaseConfig.apiKey);
+        if (state.cloudConnected && state.currentUser) {
+          badge.className = 'sync-badge cloud';
+          badge.textContent = `☁️ 雲端已同步 (${state.currentUser.email})`;
+        } else if (hasCfg && window.location.protocol === 'file:') {
+          badge.className = 'sync-badge local';
+          badge.textContent = '📁 本地檔案預覽（放上 GitHub 即啟用 Google 登入）';
+        } else if (hasCfg) {
+          badge.className = 'sync-badge local';
+          badge.textContent = '🔒 點此用 Google 登入同步雲端';
+        } else {
+          badge.className = 'sync-badge local';
+          badge.textContent = '💻 本地模式 · 點此連結 Google 雲端 DB';
+        }
+      }
+
+      // 計算各爐頭即時狀態
+      function getActiveTools() {
+        return [...state.db.tools].filter(t => !t.archived).sort((a, b) => (a.order || 0) - (b.order || 0));
+      }
+
+      function getToolActiveProject(toolId) {
+        return state.db.projects.find(p => p.toolId === toolId && (p.status === 'running' || p.status === 'review' || p.status === 'paused'));
+      }
+
+      function renderHeaderStats() {
+        const activeTools = getActiveTools();
+        let running = 0, qa = 0, idle = 0;
+        const now = nowTs();
+
+        activeTools.forEach(t => {
+          const p = getToolActiveProject(t.id);
+          if (p) {
+            if (p.status === 'review') qa++;
+            else if (p.status === 'running') {
+              const elapsedMin = (now - (p.currentRunStartedAt || p.startedAt)) / 60000;
+              if (elapsedMin >= (p.estimatedMinutes || 30)) qa++;
+              else running++;
+            }
+          } else if (!(t.cooldownUntil && t.cooldownUntil > now)) {
+            idle++;
+          }
+        });
+
+        const queued = state.db.projects.filter(p => p.status === 'queued').length;
+
+        const statsEl = document.getElementById('headerStats');
+        if (statsEl) {
+          statsEl.innerHTML = `
+            <span class="stat-pill run">🔥 烹調中: ${running}</span>
+            <span class="stat-pill qa">👨‍🍳 待試味/Deploy: ${qa}</span>
+            <span class="stat-pill idle">🟢 閒置可開火: ${idle}</span>
+            <span class="stat-pill">🧺 備料排隊: ${queued}</span>
+          `;
+        }
+        const navStoves = document.getElementById('navCountStoves');
+        if (navStoves) navStoves.textContent = activeTools.length;
+        const navProjs = document.getElementById('navCountProjects');
+        if (navProjs) navProjs.textContent = state.db.projects.length;
+      }
+
+      // 主渲染入口
+      function renderAll() {
+        applyPrefsUI();
+        updateSyncBadge();
+        renderHeaderStats();
+
+        document.querySelectorAll('.nav-tab').forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-tab') === state.activeTab);
+        });
+
+        const main = document.getElementById('mainView');
+        if (!main) return;
+
+        if (state.activeTab === 'kitchen') renderKitchenTab(main);
+        else if (state.activeTab === 'projects') renderProjectsTab(main);
+        else if (state.activeTab === 'analytics') renderAnalyticsTab(main);
+        else if (state.activeTab === 'tools') renderToolsTab(main);
+        else if (state.activeTab === 'cloud') renderCloudGuideTab(main);
+      }
+
+      // 分頁 1：廚房爐頭總覽
+      function renderKitchenTab(container) {
+        const activeTools = getActiveTools();
+        const now = nowTs();
+        const hasSamples = state.db.projects.some(p => p.isSample);
+
+        let idleNames = [];
+        let attentionNames = [];
+
+        activeTools.forEach(t => {
+          const p = getToolActiveProject(t.id);
+          if (!p && !(t.cooldownUntil && t.cooldownUntil > now)) {
+            idleNames.push(t.name);
+          } else if (p) {
+            const isOverdue = p.status === 'running' && ((now - (p.currentRunStartedAt || p.startedAt)) / 60000 >= (p.estimatedMinutes || 30));
+            if (p.status === 'review' || isOverdue) attentionNames.push(t.name);
+          }
+        });
+
+        let chefAdvice = '';
+        if (attentionNames.length > 0 && idleNames.length > 0) {
+          chefAdvice = `👨‍🍳 <strong>主廚提示：</strong>【${escapeHtml(attentionNames.join('、'))}】已經煮好等緊你修整、驗證同 Deploy！另外【${escapeHtml(idleNames.join('、'))}】目前閒置緊，快啲安排新 Project 用盡算力！`;
+        } else if (attentionNames.length > 0) {
+          chefAdvice = `👨‍🍳 <strong>主廚提示：</strong>【${escapeHtml(attentionNames.join('、'))}】待試味驗證！試下 Work 唔 Work，唔 Work 即刻畀 Feedback 回鍋重炒。`;
+        } else if (idleNames.length > 0) {
+          chefAdvice = `🟢 <strong>算力提醒：</strong>你有 <strong>${idleNames.length} 個爐頭</strong>（${escapeHtml(idleNames.join('、'))}）閒置緊！擺個 Project 落去跑，唔好浪費已訂閱嘅 Token 同月費。`;
+        } else {
+          chefAdvice = `🔥 <strong>火力全開！</strong>所有 AI 爐頭都全力運作緊，隨時留意夠鐘響鈴去驗收成果。`;
+        }
+
+        const queuedProjects = state.db.projects.filter(p => p.status === 'queued');
+
+        const cookModeLabels = {
+          quick: '⚡ 快炒',
+          braise: '🍲 慢燜',
+          bake: '🔥 長焗',
+          custom: '⏱️ 自訂'
+        };
+
+        const stovesHtml = activeTools.map(tool => {
+          const proj = getToolActiveProject(tool.id);
+          const isCooling = !proj && tool.cooldownUntil && tool.cooldownUntil > now;
+
+          let cardStateClass = 'state-idle';
+          let chipHtml = '<span class="status-chip chip-idle">🟢 閒置中 · 可落鍋</span>';
+
+          if (proj) {
+            const elapsedMs = now - (proj.currentRunStartedAt || proj.startedAt);
+            const estMs = (proj.estimatedMinutes || 30) * 60000;
+            if (proj.status === 'review') {
+              cardStateClass = 'state-review';
+              chipHtml = '<span class="status-chip chip-review">👨‍🍳 待修整 · 驗證 · Deploy</span>';
+            } else if (proj.status === 'paused') {
+              cardStateClass = 'state-cooldown';
+              chipHtml = '<span class="status-chip chip-cool">⏸️ 暫停保溫中</span>';
+            } else if (elapsedMs >= estMs) {
+              cardStateClass = 'state-overdue';
+              chipHtml = '<span class="status-chip chip-overdue">🔔 夠鐘試味！請驗收</span>';
+            } else {
+              cardStateClass = 'state-running';
+              chipHtml = '<span class="status-chip chip-running">🔥 烹調運行中</span>';
+            }
+          } else if (isCooling) {
+            cardStateClass = 'state-cooldown';
+            chipHtml = '<span class="status-chip chip-cool">❄️ 額度冷卻等重置</span>';
+          }
+
+          const quotaPct = Math.min(100, Math.max(0, Number(tool.quotaUsedPct) || 0));
+          const quotaColor = quotaPct >= 85 ? '#ef4444' : (quotaPct >= 50 ? '#f97316' : '#10b981');
+
+          let bodyHtml = '';
+          let footerHtml = '';
+
+          if (proj) {
+            const elapsedMs = now - (proj.currentRunStartedAt || proj.startedAt);
+            const estMs = (proj.estimatedMinutes || 30) * 60000;
+            const pct = Math.min(100, Math.round((elapsedMs / estMs) * 100));
+            const isOver = elapsedMs >= estMs;
+
+            const dirsHtml = (proj.directories && proj.directories.length)
+              ? `<div class="dir-list">
+                  <div class="field-mini-label"><span>📁 相關電腦 File Directory（點擊複製）</span></div>
+                  ${proj.directories.map(d => `
+                    <div class="dir-pill">
+                      <span class="dir-path" title="${escapeHtml(d)}">${escapeHtml(d)}</span>
+                      <button class="copy-mini-btn" data-copy="${escapeHtml(d)}" onclick="window.app.copyFromAttr(this)">📋 複製</button>
+                    </div>
+                  `).join('')}
+                </div>`
+              : `<div style="font-size:12px;color:var(--text-muted);">📁 未填寫 File Directory（可點下方「改資料」補上）</div>`;
+
+            const fbLogsHtml = (proj.feedbackLogs && proj.feedbackLogs.length)
+              ? `<div class="feedback-history-list">
+                  <strong style="color:#fb923c;">🔄 已回鍋畀 Feedback ${proj.feedbackCount || proj.feedbackLogs.length} 次：</strong>
+                  ${proj.feedbackLogs.slice(-2).map(f => `<div>• ${escapeHtml(f.note)}</div>`).join('')}
+                </div>`
+              : '';
+
+            const qa = proj.qaChecklist || { refined: false, verified: false, deployed: false };
+
+            bodyHtml = `
+              <div class="project-title-row">
+                <div class="project-title">${escapeHtml(proj.name)}</div>
+                <span class="cook-badge">${cookModeLabels[proj.cookMode] || '🍲 烹調'} · 目標 ${proj.estimatedMinutes}m</span>
+              </div>
+
+              ${proj.status === 'running' ? `
+                <div class="timer-box">
+                  <div class="timer-top">
+                    <span data-live-timer="${proj.id}" style="font-weight:700;color:${isOver ? '#facc15' : 'var(--text-main)'};">
+                      ${isOver ? '🔔 已超時 ' + formatClockDiff(elapsedMs - estMs) + '（快去試味！）' : '⏱️ 剩餘約 ' + formatClockDiff(estMs - elapsedMs)}
+                    </span>
+                    <span style="color:var(--text-secondary);font-size:11.5px;">本輪已跑 <span data-elapsed-timer="${proj.id}">${formatClockDiff(elapsedMs)}</span></span>
+                  </div>
+                  <div class="timer-progress-track">
+                    <div class="timer-progress-fill ${isOver ? 'overdue' : ''}" data-timer-bar="${proj.id}" style="width:${pct}%;"></div>
+                  </div>
+                </div>
+              ` : `
+                <div class="timer-box" style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;">
+                  <span>${proj.status === 'review' ? '👨‍🍳 AI 已跑完本輪，請進行下方三步驗收' : '⏸️ 目前暫停計時中'}</span>
+                  <span style="color:var(--text-secondary);">累計耗時：${formatDuration(proj.accumulatedMinutes || 0)}</span>
+                </div>
+              `}
+
+              <div class="progress-inline-box">
+                <div class="field-mini-label">
+                  <span>💬 進度去到邊（一句說話隨時改，按 Enter 即存）</span>
+                </div>
+                <div class="inline-progress-row">
+                  <input type="text" class="inline-input" id="prog_in_${proj.id}" value="${escapeHtml(proj.progressNote || '')}" placeholder="用一句說話寫低依家去到邊..." onkeydown="if(event.key==='Enter'){window.app.quickSaveProgress('${proj.id}');}" />
+                  <button class="btn btn-secondary btn-sm" onclick="window.app.quickSaveProgress('${proj.id}')">儲存</button>
+                </div>
+              </div>
+
+              ${dirsHtml}
+
+              <div class="qa-box">
+                <div class="qa-title">
+                  <span>✅ 出菜前必做：修整 · 驗證 · Deploy</span>
+                  <span style="font-weight:500;font-size:11px;">${[qa.refined, qa.verified, qa.deployed].filter(Boolean).length}/3 完成</span>
+                </div>
+                <div class="qa-checks">
+                  <label class="qa-check-item">
+                    <input type="checkbox" ${qa.refined ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'refined', this.checked)" />
+                    <span>1. 修整細節</span>
+                  </label>
+                  <label class="qa-check-item">
+                    <input type="checkbox" ${qa.verified ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'verified', this.checked)" />
+                    <span>2. 本地驗證</span>
+                  </label>
+                  <label class="qa-check-item">
+                    <input type="checkbox" ${qa.deployed ? 'checked' : ''} onchange="window.app.toggleQaCheck('${proj.id}', 'deployed', this.checked)" />
+                    <span>3. Deploy 確認 Work</span>
+                  </label>
+                </div>
+                ${fbLogsHtml}
+              </div>
+            `;
+
+            footerHtml = `
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${proj.status === 'running' ? `
+                  <button class="btn btn-qa btn-sm" onclick="window.app.moveToReview('${proj.id}')">👨‍🍳 煮好去驗收</button>
+                ` : ''}
+                <button class="btn btn-idle btn-sm" onclick="window.app.completeProject('${proj.id}')">✅ Work！完成上菜</button>
+                <button class="btn btn-primary btn-sm" onclick="window.app.openFeedbackModal('${proj.id}')">🔄 唔Work · 畀Feedback</button>
+              </div>
+              <div style="display:flex;gap:5px;">
+                <button class="icon-btn btn-sm" onclick="window.app.openEditProjectModal('${proj.id}')" title="修改項目名稱或路徑">✏️ 改資料</button>
+              </div>
+            `;
+          } else {
+            // 閒置或額度冷卻狀態
+            const idleMins = tool.lastActiveEndedAt ? Math.max(0, (now - tool.lastActiveEndedAt) / 60000) : 0;
+            const quickQueueOptions = queuedProjects.length > 0
+              ? `<div style="margin-top:8px;width:100%;max-width:260px;">
+                  <select class="form-select" style="font-size:12px;padding:6px 8px;" onchange="if(this.value){window.app.assignQueuedToStove(this.value, '${tool.id}');}">
+                    <option value="">📥 從備料區揀 Project 直接落鍋...</option>
+                    ${queuedProjects.map(qp => `<option value="${qp.id}">${escapeHtml(qp.name)}</option>`).join('')}
+                  </select>
+                </div>`
+              : '';
+
+            bodyHtml = `
+              <div class="idle-empty-box" style="${isCooling ? 'border-color:rgba(56,189,248,0.35);background:rgba(56,189,248,0.05);' : ''}">
+                <div class="idle-wok-icon">${isCooling ? '❄️' : '🍳'}</div>
+                <div style="font-weight:700;font-size:14.5px;">
+                  ${isCooling ? '算力額度冷卻等待重置中' : '隻鑊空緊！有閒置算力可用'}
+                </div>
+                <div class="idle-time-note">
+                  ${isCooling
+                    ? `預計冷卻至 ${formatDateTime(tool.cooldownUntil)}`
+                    : `已閒置 <strong data-idle-timer="${tool.id}" data-idle-since="${tool.lastActiveEndedAt || now}">${formatDuration(idleMins)}</strong> · 仲有 <strong>${100 - quotaPct}%</strong> 算力未用盡`
+                  }
+                </div>
+                <button class="btn btn-idle" style="margin-top:6px;" onclick="window.app.openNewProjectModal('${tool.id}')">🔥 立即安排新 Project 落鍋</button>
+                ${quickQueueOptions}
+              </div>
+            `;
+
+            footerHtml = `
+              <span style="font-size:12px;color:var(--text-muted);">${escapeHtml(tool.quotaResetLabel || '記得善用配額')}</span>
+              <div style="display:flex;gap:6px;">
+                ${isCooling
+                  ? `<button class="icon-btn btn-sm" onclick="window.app.clearCooldown('${tool.id}')">🔥 解除冷卻</button>`
+                  : `<button class="icon-btn btn-sm" onclick="window.app.setCooldown('${tool.id}')" title="爆咗 Token 等緊重置時可標記">❄️ 標記爆額冷卻</button>`
+                }
+                <button class="icon-btn btn-sm" onclick="window.app.openEditToolModal('${tool.id}')">⚙️</button>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="stove-card ${cardStateClass}">
+              <div class="stove-top">
+                <div class="tool-identity">
+                  <div class="tool-icon">${escapeHtml(tool.icon || '🤖')}</div>
+                  <div>
+                    <div class="tool-name">${escapeHtml(tool.name)}</div>
+                    <div class="tool-workflow">${escapeHtml(tool.workflow || '')}</div>
+                  </div>
+                </div>
+                ${chipHtml}
+              </div>
+
+              <div class="quota-strip" title="點擊調整本月/本輪已用算力百分比">
+                <span style="color:var(--text-secondary);">已用配額: <strong style="color:var(--text-main);">${quotaPct}%</strong></span>
+                <div class="quota-bar-wrap" onclick="window.app.promptUpdateQuota('${tool.id}')">
+                  <div class="quota-bar-fill" style="width:${quotaPct}%;background:${quotaColor};"></div>
+                </div>
+                <button class="copy-mini-btn" onclick="window.app.promptUpdateQuota('${tool.id}')">更新%</button>
+              </div>
+
+              <div class="stove-body">${bodyHtml}</div>
+              <div class="stove-footer">${footerHtml}</div>
+            </div>
+          `;
+        }).join('');
+
+        // 備料待煮區
+        const prepHtml = queuedProjects.length === 0
+          ? `<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:13.5px;">目前備料區無排隊項目。當所有鑊都炒緊餸但你突然諗到新 Idea，可以先放落備料區排隊！</div>`
+          : `<div class="prep-grid">
+              ${queuedProjects.map(qp => {
+                const prefTool = state.db.tools.find(t => t.id === qp.preferredToolId);
+                return `
+                  <div class="prep-card">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                      <strong style="font-size:14.5px;">${escapeHtml(qp.name)}</strong>
+                      <span class="cook-badge">預計 ${qp.estimatedMinutes || 30}m</span>
+                    </div>
+                    ${qp.progressNote ? `<div style="font-size:12.5px;color:var(--text-secondary);">💬 ${escapeHtml(qp.progressNote)}</div>` : ''}
+                    ${(qp.directories && qp.directories.length) ? `<div class="mono" style="font-size:11.5px;color:#93c5fd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📁 ${escapeHtml(qp.directories[0])}${qp.directories.length > 1 ? ` (+${qp.directories.length-1})` : ''}</div>` : ''}
+                    <div style="margin-top:auto;padding-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <span style="font-size:11.5px;color:var(--text-muted);">${prefTool ? '首選：' + escapeHtml(prefTool.name) : '未指定工具'}</span>
+                      <div style="display:flex;gap:6px;">
+                        <button class="btn btn-idle btn-sm" onclick="window.app.openEditProjectModal('${qp.id}')">🔥 揀鑊落鍋 / 編輯</button>
+                        <button class="btn btn-danger btn-sm" onclick="window.app.deleteProject('${qp.id}')">刪除</button>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>`;
+
+        container.innerHTML = `
+          ${hasSamples ? `
+            <div class="sample-banner">
+              <span>✨ <strong>新手導覽：</strong>畫面預載咗 3 個【範例】項目，等你可以即刻睇到「運行緊」、「待驗證 Deploy」同「備料排隊」嘅效果！試玩完可以一鍵清空範例。</span>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.clearSampleProjects()">🧹 清空範例 Project 正式開始</button>
+            </div>
+          ` : ''}
+
+          <div class="chef-banner">
+            <div class="chef-banner-text">${chefAdvice}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="window.app.openNewProjectModal('')">+ 新增 Project / 落鍋開火</button>
+              <button class="btn btn-secondary" onclick="window.app.openNewToolModal()">+ 加新 AI 工具</button>
+            </div>
+          </div>
+
+          <div class="section-header">
+            <div class="section-title">🔥 我嘅 AI 生產線爐頭（共 ${activeTools.length} 個活躍訂閱）</div>
+            <span style="font-size:12.5px;color:var(--text-secondary);">提示：做完記得剔齊「修整 · 驗證 · Deploy」，唔 Work 就㩒「畀 Feedback」回鍋！</span>
+          </div>
+
+          <div class="stoves-grid">${stovesHtml}</div>
+
+          <div class="prep-section">
+            <div class="section-header" style="margin-bottom:4px;">
+              <div class="section-title">🧺 備料待煮區（預先排隊嘅新 Project 靈感）</div>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.openNewProjectModal('QUEUE')">+ 先擺個新 Project 入備料區</button>
+            </div>
+            <p style="font-size:12.5px;color:var(--text-secondary);">預先寫低想做嘅 Project 名同 File Directory，一有爐頭閒置就可以一秒落鍋，零空窗期！</p>
+            ${prepHtml}
+          </div>
+        `;
+      }
+
+      // 分頁 2：所有專案紀錄與資料庫搜尋（獨立渲染表格列，避免搜尋輸入時中斷中文輸入法游標）
+      function buildProjectsRowsHtml() {
+        const kw = (state.projSearch || '').trim().toLowerCase();
+        const filtered = [...state.db.projects]
+          .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))
+          .filter(p => {
+            if (state.projFilterStatus !== 'all' && p.status !== state.projFilterStatus) return false;
+            if (state.projFilterTool !== 'all' && p.toolId !== state.projFilterTool) return false;
+            if (kw) {
+              const hay = [p.name, p.progressNote, ...(p.directories || [])].join(' ').toLowerCase();
+              if (!hay.includes(kw)) return false;
+            }
+            return true;
+          });
+
+        const statusBadgeMap = {
+          running: '<span class="status-chip chip-running">🔥 運行中</span>',
+          review: '<span class="status-chip chip-review">👨‍🍳 待驗證/Deploy</span>',
+          queued: '<span class="status-chip chip-cool">🧺 備料待煮</span>',
+          paused: '<span class="status-chip chip-cool">⏸️ 暫停</span>',
+          completed: '<span class="status-chip chip-idle">✅ 已完成上菜</span>'
+        };
+
+        const rowsHtml = filtered.length === 0
+          ? `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-muted);">搵唔到符合條件嘅 Project 紀錄</td></tr>`
+          : filtered.map(p => {
+              const tool = state.db.tools.find(t => t.id === (p.toolId || p.preferredToolId));
+              return `
+                <tr>
+                  <td>
+                    <div style="font-weight:700;">${escapeHtml(p.name)}</div>
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;">開工：${formatDateTime(p.startedAt)}${p.completedAt ? `<br>完成：${formatDateTime(p.completedAt)}` : ''}</div>
+                  </td>
+                  <td>${tool ? `${escapeHtml(tool.icon)} ${escapeHtml(tool.name)}` : '<span style="color:var(--text-muted);">未分配</span>'}</td>
+                  <td>
+                    ${statusBadgeMap[p.status] || p.status}
+                    <div style="font-size:11.5px;color:var(--text-secondary);margin-top:5px;">
+                      回鍋 Feedback：<strong>${p.feedbackCount || 0}</strong> 次 · 耗時 ${formatDuration(p.accumulatedMinutes || 0)}
+                    </div>
+                  </td>
+                  <td>
+                    ${(p.directories && p.directories.length)
+                      ? p.directories.map(d => `
+                        <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;">
+                          <code style="font-size:11.5px;color:#93c5fd;">${escapeHtml(d)}</code>
+                          <button class="copy-mini-btn" data-copy="${escapeHtml(d)}" onclick="window.app.copyFromAttr(this)">複製</button>
+                        </div>
+                      `).join('')
+                      : '<span style="color:var(--text-muted);font-size:12px;">-</span>'
+                    }
+                  </td>
+                  <td style="max-width:260px;">${escapeHtml(p.progressNote || '-')}</td>
+                  <td>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <button class="btn btn-secondary btn-sm" onclick="window.app.openEditProjectModal('${p.id}')">編輯</button>
+                      ${p.status === 'completed' ? `<button class="btn btn-primary btn-sm" onclick="window.app.reopenProject('${p.id}')">重開回鍋</button>` : ''}
+                      <button class="btn btn-danger btn-sm" onclick="window.app.deleteProject('${p.id}')">刪除</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+
+        return { count: filtered.length, rowsHtml };
+      }
+
+      function refreshProjectsTableOnly() {
+        const tbody = document.getElementById('projectsTableBody');
+        const countEl = document.getElementById('projectsCountSpan');
+        if (!tbody) {
+          renderProjectsTab(document.getElementById('mainView'));
+          return;
+        }
+        const { count, rowsHtml } = buildProjectsRowsHtml();
+        tbody.innerHTML = rowsHtml;
+        if (countEl) countEl.textContent = count;
+      }
+
+      function renderProjectsTab(container) {
+        const { count, rowsHtml } = buildProjectsRowsHtml();
+        container.innerHTML = `
+          <div class="panel-card">
+            <div class="section-header">
+              <div class="section-title">📋 專案資料庫總覽（共 <span id="projectsCountSpan">${count}</span> 筆紀錄）</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="window.app.exportCSV()">📊 匯出 Excel CSV</button>
+                <button class="btn btn-primary btn-sm" onclick="window.app.openNewProjectModal('')">+ 新增 Project</button>
+              </div>
+            </div>
+
+            <div class="filter-bar">
+              <input type="text" class="form-input" style="max-width:280px;" placeholder="🔍 搜尋 Project 名、進度或資料夾路徑..." value="${escapeHtml(state.projSearch)}" oninput="window.app.setProjSearch(this.value)" />
+              <select class="form-select" style="max-width:180px;" onchange="window.app.setProjFilterStatus(this.value)">
+                <option value="all" ${state.projFilterStatus === 'all' ? 'selected' : ''}>所有狀態</option>
+                <option value="running" ${state.projFilterStatus === 'running' ? 'selected' : ''}>🔥 烹調運行中</option>
+                <option value="review" ${state.projFilterStatus === 'review' ? 'selected' : ''}>👨‍🍳 待驗證 Deploy</option>
+                <option value="queued" ${state.projFilterStatus === 'queued' ? 'selected' : ''}>🧺 備料待煮</option>
+                <option value="completed" ${state.projFilterStatus === 'completed' ? 'selected' : ''}>✅ 已完成上菜</option>
+              </select>
+              <select class="form-select" style="max-width:210px;" onchange="window.app.setProjFilterTool(this.value)">
+                <option value="all" ${state.projFilterTool === 'all' ? 'selected' : ''}>所有 AI 工具</option>
+                ${state.db.tools.map(t => `<option value="${t.id}" ${state.projFilterTool === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Project 名稱 / 時間</th>
+                    <th>使用 AI 工具</th>
+                    <th>狀態 & 回鍋次數</th>
+                    <th>相關電腦 File Directories</th>
+                    <th>進度去到邊（一句說話）</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="projectsTableBody">
+                  ${rowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      // 分頁 3：算力效益分析與定期檢討
+      function renderAnalyticsTab(container) {
+        const days = Number(state.prefs.analyticsDays) || 30;
+        const cutoff = days === 9999 ? 0 : nowTs() - days * 86400 * 1000;
+
+        const periodProjects = state.db.projects.filter(p => (p.startedAt || 0) >= cutoff);
+        const completedProjs = periodProjects.filter(p => p.status === 'completed');
+        const totalActiveMins = periodProjects.reduce((acc, p) => acc + (Number(p.accumulatedMinutes) || 0), 0);
+        const firstPassCount = completedProjs.filter(p => (p.feedbackCount || 0) === 0).length;
+        const firstPassRate = completedProjs.length > 0 ? Math.round((firstPassCount / completedProjs.length) * 100) : 100;
+
+        const activeTools = getActiveTools();
+        const totalMonthlyHKD = activeTools.reduce((acc, t) => acc + (Number(t.monthlyCostHKD) || 0), 0);
+
+        // 各工具詳細統計（包含已封存工具的歷史數據）
+        const toolMetrics = state.db.tools.map(t => {
+          const tProjs = periodProjects.filter(p => p.toolId === t.id);
+          const tDone = tProjs.filter(p => p.status === 'completed');
+          const tMins = tProjs.reduce((s, p) => s + (Number(p.accumulatedMinutes) || 0), 0);
+          const tFeedbacks = tProjs.reduce((s, p) => s + (Number(p.feedbackCount) || 0), 0);
+          const avgFeedback = tProjs.length > 0 ? (tFeedbacks / tProjs.length).toFixed(1) : '0.0';
+          const costPerDone = tDone.length > 0 && t.monthlyCostHKD > 0 ? 'HK$' + Math.round(t.monthlyCostHKD / tDone.length) : '-';
+
+          let verdict = '<span class="status-chip chip-idle">✅ 正常運作</span>';
+          if (!t.archived && tProjs.length === 0 && (t.quotaUsedPct || 0) < 25) {
+            verdict = '<span class="status-chip chip-overdue">⚠️ 嚴重閒置 · 快安排任務！</span>';
+          } else if (tDone.length >= 3 && Number(avgFeedback) <= 1) {
+            verdict = '<span class="status-chip chip-idle">🏆 高產穩定主力</span>';
+          } else if (Number(avgFeedback) >= 2.5) {
+            verdict = '<span class="status-chip chip-running">🔧 回鍋率高 · 建議執靚 Prompt</span>';
+          }
+
+          return {
+            tool: t,
+            totalCount: tProjs.length,
+            doneCount: tDone.length,
+            mins: tMins,
+            feedbacks: tFeedbacks,
+            avgFeedback,
+            costPerDone,
+            verdict
+          };
+        });
+
+        const maxMins = Math.max(60, ...toolMetrics.map(m => m.mins));
+
+        container.innerHTML = `
+          <div class="section-header">
+            <div class="section-title">📊 AI 生產線效益檢討與數據分析</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <select class="form-select" style="width:auto;" onchange="window.app.setAnalyticsDays(this.value)">
+                <option value="7" ${days === 7 ? 'selected' : ''}>檢討範圍：過去 7 日</option>
+                <option value="30" ${days === 30 ? 'selected' : ''}>檢討範圍：過去 30 日</option>
+                <option value="9999" ${days === 9999 ? 'selected' : ''}>檢討範圍：全部歷史紀錄</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.exportCSV()">📥 匯出 CSV 報表</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.exportJSONBackup()">💾 匯出完整 JSON 備份</button>
+              <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                📂 匯入 JSON 備份
+                <input type="file" accept=".json" style="display:none;" onchange="window.app.importJSONBackup(event)" />
+              </label>
+            </div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">✅ 期內完成上菜 Project</div>
+              <div class="kpi-value" style="color:#34d399;">${completedProjs.length} <span style="font-size:14px;font-weight:500;">個（共開鍋 ${periodProjects.length} 個）</span></div>
+              <div class="kpi-sub">完成並通過驗證 Deploy 嘅項目總數</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">🔥 累計 AI 實際烹調工時</div>
+              <div class="kpi-value" style="color:#fb923c;">${(totalActiveMins / 60).toFixed(1)} <span style="font-size:14px;font-weight:500;">小時</span></div>
+              <div class="kpi-sub">各 AI 爐頭幫你自動跑任務嘅總時間</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">🎯 一次通過率（免回鍋重炒）</div>
+              <div class="kpi-value" style="color:#c084fc;">${firstPassRate}%</div>
+              <div class="kpi-sub">越少「唔Work回鍋」代表工具同 Prompt 越夾</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">💳 活躍訂閱每月總預算</div>
+              <div class="kpi-value" style="color:#38bdf8;">HK$${totalMonthlyHKD}</div>
+              <div class="kpi-sub">共 ${activeTools.length} 個活躍 AI 爐頭（可在工具頁調整月費）</div>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="section-title" style="margin-bottom:14px;">⏱️ 各 AI 工具投入工時與配額使用對比</div>
+            ${toolMetrics.map(m => `
+              <div class="bar-row">
+                <div class="bar-label">${escapeHtml(m.tool.icon)} ${escapeHtml(m.tool.name)}</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${Math.max(3, Math.round((m.mins / maxMins) * 100))}%;"></div>
+                </div>
+                <div class="bar-val">${formatDuration(m.mins)} · 配額 ${m.tool.quotaUsedPct || 0}%</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="panel-card">
+            <div class="section-title" style="margin-bottom:14px;">🔍 各訂閱工具投資回報（ROI）及閒置檢討表</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>AI 訂閱工具</th>
+                    <th>月費成本</th>
+                    <th>目前配額已用</th>
+                    <th>參與 / 完成項目</th>
+                    <th>累計運行時間</th>
+                    <th>平均回鍋 Feedback 次數</th>
+                    <th>每完成項目平均成本</th>
+                    <th>效益診斷建議</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${toolMetrics.map(m => `
+                    <tr>
+                      <td><strong>${escapeHtml(m.tool.icon)} ${escapeHtml(m.tool.name)}</strong> ${m.tool.archived ? '<span style="font-size:11px;color:var(--text-muted);">(已退訂封存)</span>' : ''}</td>
+                      <td>HK$${m.tool.monthlyCostHKD || 0}</td>
+                      <td><strong>${m.tool.quotaUsedPct || 0}%</strong></td>
+                      <td>${m.totalCount} 參與 / <strong>${m.doneCount} 完成</strong></td>
+                      <td>${formatDuration(m.mins)}</td>
+                      <td>${m.avgFeedback} 次</td>
+                      <td>${m.costPerDone}</td>
+                      <td>${m.verdict}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      // 分頁 4：訂閱工具加減管理
+      function renderToolsTab(container) {
+        container.innerHTML = `
+          <div class="panel-card">
+            <div class="section-header">
+              <div>
+                <div class="section-title">🛠️ AI 訂閱工具清單管理（隨時加減爐頭）</div>
+                <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">日後新 Subscribe 任何 AI 工具或開多幾個分身 Account 可以隨時新增；唔再用嘅工具可以「封存退訂」（保留舊數據做分析）或「徹底刪除」。</p>
+              </div>
+              <button class="btn btn-primary" onclick="window.app.openNewToolModal()">+ 新增 AI 訂閱工具</button>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>順序</th>
+                    <th>工具 / 帳號名稱</th>
+                    <th>工作流模式</th>
+                    <th>月費 (HK$)</th>
+                    <th>已用配額 %</th>
+                    <th>配額重置備註</th>
+                    <th>狀態</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${[...state.db.tools].sort((a, b) => (a.order || 0) - (b.order || 0)).map((t, idx) => `
+                    <tr>
+                      <td>#${idx + 1}</td>
+                      <td><strong style="font-size:14.5px;">${escapeHtml(t.icon)} ${escapeHtml(t.name)}</strong></td>
+                      <td>${escapeHtml(t.workflow || '-')}</td>
+                      <td>HK$${t.monthlyCostHKD || 0}</td>
+                      <td>${t.quotaUsedPct || 0}%</td>
+                      <td>${escapeHtml(t.quotaResetLabel || '-')}</td>
+                      <td>${t.archived ? '<span class="status-chip chip-cool">📦 已退訂封存</span>' : '<span class="status-chip chip-idle">🟢 服役中</span>'}</td>
+                      <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                          <button class="btn btn-secondary btn-sm" onclick="window.app.openEditToolModal('${t.id}')">✏️ 編輯</button>
+                          <button class="btn btn-secondary btn-sm" onclick="window.app.toggleArchiveTool('${t.id}')">${t.archived ? '♻️ 恢復啟用' : '📦 退訂封存'}</button>
+                          <button class="btn btn-danger btn-sm" onclick="window.app.deleteTool('${t.id}')">🗑️ 刪除</button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      // 分頁 5：零程式碼 Google 登入 + 雲端 Database + GitHub Pages 新手設定精靈
+      function renderCloudGuideTab(container) {
+        const cfg = state.cloudCfg.firebaseConfig;
+        const ownerEmail = state.cloudCfg.ownerEmail || '';
+        const hostDomain = window.location.hostname || '你的GitHub帳號.github.io';
+
+        const firestoreRuleText = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.email == "${ownerEmail || '請先在上方填寫你的Gmail@gmail.com'}";
+    }
+  }
+}`;
+
+        container.innerHTML = `
+          <div class="panel-card">
+            <div class="section-header">
+              <div>
+                <div class="section-title">☁️ Google 帳號登入 + 私人雲端 Database 設定精靈（電腦小白免改 Code 版）</div>
+                <p style="font-size:13.5px;color:var(--text-secondary);margin-top:4px;">完全唔需要自己打開 HTML 改任何程式碼！跟住下面 4 步貼上設定，再撳「下載已綁定雲端設定嘅 index.html」擺上 GitHub 就永久搞掂！</p>
+              </div>
+              ${state.cloudConnected && state.currentUser ? `
+                <button class="btn btn-danger btn-sm" onclick="window.app.signOutGoogle()">登出 Google (${escapeHtml(state.currentUser.email)})</button>
+              ` : ''}
+            </div>
+
+            <div class="step-card">
+              <div style="font-weight:700;margin-bottom:8px;"><span class="step-num">1</span> 喺 Google Firebase 免費開一個私人雲端資料庫（只需做一次，約 3 分鐘）</div>
+              <ol style="padding-left:20px;font-size:13.5px;color:var(--text-secondary);display:flex;flex-direction:column;gap:5px;">
+                <li>打開 <a href="https://console.firebase.google.com/" target="_blank" style="color:#fb923c;font-weight:600;">Firebase Console (console.firebase.google.com)</a> 用你嘅 Google 帳號登入，撳 <strong>Create a project</strong>（隨便改名例如 <code>my-ai-kitchen</code>，熄咗 Google Analytics 更快）。</li>
+                <li>左邊選單撳 <strong>Build → Authentication → Get started</strong>，揀 <strong>Google</strong>，將 Enable 開關打開，揀返你自己個支援 Email 後撳 Save。</li>
+                <li>左邊選單撳 <strong>Build → Firestore Database → Create database</strong>，地區揀近香港嘅（例如 <code>asia-east2 (Hong Kong)</code>），先揀 Start in production mode → Create。</li>
+                <li>回到 Project Overview 首頁，撳中間嘅 <strong><code>&lt;/&gt;</code> (Web 圖示)</strong> 新增網頁 App，輸入名稱後會見到一段 <code>firebaseConfig = { ... }</code> 文字 —— <strong>成段複製佢</strong>貼落下面第 2 步！</li>
+              </ol>
+            </div>
+
+            <div class="step-card">
+              <div style="font-weight:700;margin-bottom:10px;"><span class="step-num">2</span> 貼上你嘅專屬 Email 同 Firebase 設定（自動識別，唔使執格式）</div>
+              <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label">你專用登入嘅 Google Email（白名單鎖定，其他人就算知道網址都入唔到）：</label>
+                <input type="email" id="cfgOwnerEmail" class="form-input" placeholder="例如：yourname@gmail.com" value="${escapeHtml(ownerEmail)}" oninput="window.app.updateRulesPreview(this.value)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">直接貼上從 Firebase 複製嘅 <code>firebaseConfig</code> 內容：</label>
+                <textarea id="cfgFirebaseRaw" rows="6" class="form-textarea mono" placeholder="直接成段貼入嚟就得，例如：&#10;const firebaseConfig = {&#10;  apiKey: &quot;AIzaSy...&quot;,&#10;  authDomain: &quot;xxx.firebaseapp.com&quot;,&#10;  projectId: &quot;xxx&quot;,&#10;  appId: &quot;1:123...&quot;&#10;};">${cfg ? escapeHtml(JSON.stringify(cfg, null, 2)) : ''}</textarea>
+              </div>
+              <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="window.app.saveCloudSetup()">💾 儲存雲端設定</button>
+                <button class="btn btn-idle" onclick="window.app.exportConfiguredHtml()">📦 一鍵下載已綁定設定嘅 index.html（直接擺上 GitHub！）</button>
+                ${cfg ? `<button class="btn btn-danger btn-sm" onclick="window.app.clearCloudSetup()">清除雲端設定</button>` : ''}
+              </div>
+            </div>
+
+            <div class="step-card">
+              <div style="font-weight:700;margin-bottom:6px;"><span class="step-num">3</span> 鎖死雲端 Database 權限（確保全世界只有你個 Google 帳號可以讀寫）</div>
+              <p style="font-size:13px;color:var(--text-secondary);">喺 Firebase Console → <strong>Firestore Database → 頂部 Rules 分頁</strong>，將入面原本嘅字刪走，撳下面粒掣複製呢段專屬安全規則貼上去，再撳 <strong>Publish</strong>：</p>
+              <div class="copy-block" id="rulesBlock">${escapeHtml(firestoreRuleText)}</div>
+              <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="window.app.copyFirestoreRules()">📋 一鍵複製安全規則</button>
+            </div>
+
+            <div class="step-card">
+              <div style="font-weight:700;margin-bottom:6px;"><span class="step-num">4</span> 擺上 GitHub Repository 並加入授權網域</div>
+              <ol style="padding-left:20px;font-size:13.5px;color:var(--text-secondary);display:flex;flex-direction:column;gap:5px;">
+                <li>將上面第 2 步下載嘅 <strong><code>index.html</code></strong> Upload 上你嘅 GitHub Repository。</li>
+                <li>喺 GitHub Repository 撳 <strong>Settings → 左邊 Pages</strong>，喺 Branch 揀 <code>main</code> → Save，等 1 分鐘就會得到你嘅專屬網址（例如 <code>https://你的帳號.github.io/你的repo名/</code>）。</li>
+                <li>最後一步：去 Firebase Console → <strong>Authentication → Settings → Authorized domains → Add domain</strong>，將你嘅 GitHub 網域（例如 <code>你的帳號.github.io</code>）加落去。之後無論喺電腦定手機打開網址，撳一下 Google 登入就即時同步！</li>
+              </ol>
+              ${window.location.hostname ? `
+                <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:12.5px;color:var(--text-secondary);">偵測到目前網域：<code>${escapeHtml(hostDomain)}</code></span>
+                  <button class="copy-mini-btn" data-copy="${escapeHtml(hostDomain)}" onclick="window.app.copyFromAttr(this)">📋 複製此網域去加落 Firebase</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      // 解析用家貼上嘅任何格式 firebaseConfig（支援純 JSON 或成段 JS 程式碼）
+      function parseFirebaseConfigInput(rawText) {
+        const txt = (rawText || '').trim();
+        if (!txt) return null;
+        try {
+          const j = JSON.parse(txt);
+          if (j && j.apiKey && j.projectId) return j;
+        } catch (e) {}
+
+        const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+        const extracted = {};
+        keys.forEach(k => {
+          const reg = new RegExp(k + '\\s*:\\s*["\']([^"\']+)["\']');
+          const m = txt.match(reg);
+          if (m && m[1]) extracted[k] = m[1].trim();
+        });
+        if (extracted.apiKey && extracted.projectId) {
+          if (!extracted.authDomain) extracted.authDomain = extracted.projectId + '.firebaseapp.com';
+          return extracted;
+        }
+        return null;
+      }
+
+      // 每秒更新倒數計時器與閒置時間（不重繪整個 DOM，確保輸入框打字流暢不中斷）
+      setInterval(() => {
+        const now = nowTs();
+        state.db.projects.forEach(p => {
+          if (p.status !== 'running') return;
+          const elapsedMs = now - (p.currentRunStartedAt || p.startedAt);
+          const estMs = (p.estimatedMinutes || 30) * 60000;
+          const isOver = elapsedMs >= estMs;
+
+          if (isOver && !state.notifiedOverdueIds.has(p.id + '_' + p.currentRunStartedAt)) {
+            state.notifiedOverdueIds.add(p.id + '_' + p.currentRunStartedAt);
+            playKitchenBell();
+            const tool = state.db.tools.find(t => t.id === p.toolId);
+            showToast(`🔔 【夠鐘試味】${tool ? tool.name : 'AI 爐頭'} 嘅「${p.name}」預計時間已到，快去驗證及 Deploy！`);
+            renderHeaderStats();
+          }
+
+          const liveEl = document.querySelector(`[data-live-timer="${p.id}"]`);
+          if (liveEl) {
+            liveEl.textContent = isOver
+              ? '🔔 已超時 ' + formatClockDiff(elapsedMs - estMs) + '（快去試味！）'
+              : '⏱️ 剩餘約 ' + formatClockDiff(estMs - elapsedMs);
+            liveEl.style.color = isOver ? '#facc15' : 'var(--text-main)';
+          }
+          const elapEl = document.querySelector(`[data-elapsed-timer="${p.id}"]`);
+          if (elapEl) elapEl.textContent = formatClockDiff(elapsedMs);
+
+          const barEl = document.querySelector(`[data-timer-bar="${p.id}"]`);
+          if (barEl) {
+            const pct = Math.min(100, Math.round((elapsedMs / estMs) * 100));
+            barEl.style.width = pct + '%';
+            if (isOver) barEl.classList.add('overdue');
+          }
+        });
+
+        document.querySelectorAll('[data-idle-timer]').forEach(el => {
+          const since = Number(el.getAttribute('data-idle-since')) || now;
+          el.textContent = formatDuration((now - since) / 60000);
+        });
+      }, 1000);
+
+      // 公開操作介面
+      window.app = {
+        switchTab(tab) {
+          state.activeTab = tab;
+          renderAll();
+        },
+        toggleSound() {
+          state.prefs.sound = !state.prefs.sound;
+          savePrefs();
+          if (state.prefs.sound) playKitchenBell();
+          showToast(state.prefs.sound ? '🔔 已開啟夠鐘試味響鈴提示' : '🔕 已靜音');
+        },
+        toggleTheme() {
+          state.prefs.theme = state.prefs.theme === 'dark' ? 'light' : 'dark';
+          savePrefs();
+        },
+        copyFromAttr(el) {
+          const txt = el && el.getAttribute('data-copy');
+          if (txt != null) this.copyText(txt);
+        },
+        copyText(txt) {
+          navigator.clipboard.writeText(txt).then(() => {
+            showToast('📋 已複製：' + txt);
+          }).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = txt;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            showToast('📋 已複製：' + txt);
+          });
+        },
+        closeModal(id) {
+          document.getElementById(id).classList.remove('open');
+        },
+        onCookModeChange() {
+          const mode = document.getElementById('pmCookMode').value;
+          const minInput = document.getElementById('pmEstMinutes');
+          if (mode === 'quick') minInput.value = 15;
+          else if (mode === 'braise') minInput.value = 45;
+          else if (mode === 'bake') minInput.value = 120;
+        },
+        populateToolSelect(selectedVal) {
+          const sel = document.getElementById('pmToolId');
+          const activeTools = getActiveTools();
+          const now = nowTs();
+          let html = `<option value="QUEUE" ${selectedVal === 'QUEUE' ? 'selected' : ''}>🧺 先擺入備料待煮區（暫不佔用爐頭）</option>`;
+          activeTools.forEach(t => {
+            const busyProj = getToolActiveProject(t.id);
+            const tag = busyProj ? `（目前煮緊：${busyProj.name.slice(0, 12)}...）` : '（🟢 閒置可即刻落鍋！）';
+            html += `<option value="${t.id}" ${selectedVal === t.id ? 'selected' : ''}>${escapeHtml(t.icon)} ${escapeHtml(t.name)} ${escapeHtml(tag)}</option>`;
+          });
+          sel.innerHTML = html;
+        },
+        openNewProjectModal(preselectedToolId) {
+          document.getElementById('projectModalTitle').textContent = preselectedToolId === 'QUEUE' ? '🧺 新增備料待煮 Project' : '🔥 落鍋開新 Project';
+          document.getElementById('pmProjectId').value = '';
+          document.getElementById('pmName').value = '';
+          document.getElementById('pmDirs').value = '';
+          document.getElementById('pmProgress').value = '';
+          document.getElementById('pmCookMode').value = 'braise';
+          document.getElementById('pmEstMinutes').value = 45;
+
+          let defaultTarget = preselectedToolId;
+          if (!defaultTarget) {
+            const firstIdle = getActiveTools().find(t => !getToolActiveProject(t.id));
+            defaultTarget = firstIdle ? firstIdle.id : 'QUEUE';
+          }
+          this.populateToolSelect(defaultTarget);
+          document.getElementById('projectModal').classList.add('open');
+        },
+        openEditProjectModal(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          document.getElementById('projectModalTitle').textContent = '✏️ 編輯 / 調配 Project';
+          document.getElementById('pmProjectId').value = p.id;
+          document.getElementById('pmName').value = p.name || '';
+          document.getElementById('pmDirs').value = (p.directories || []).join('\n');
+          document.getElementById('pmProgress').value = p.progressNote || '';
+          document.getElementById('pmCookMode').value = p.cookMode || 'braise';
+          document.getElementById('pmEstMinutes').value = p.estimatedMinutes || 45;
+          this.populateToolSelect(p.status === 'queued' || !p.toolId ? 'QUEUE' : p.toolId);
+          document.getElementById('projectModal').classList.add('open');
+        },
+        saveProjectModal() {
+          const id = document.getElementById('pmProjectId').value;
+          const targetToolVal = document.getElementById('pmToolId').value;
+          const name = document.getElementById('pmName').value.trim();
+          const dirsRaw = document.getElementById('pmDirs').value;
+          const progress = document.getElementById('pmProgress').value.trim();
+          const cookMode = document.getElementById('pmCookMode').value;
+          const estMins = Math.max(1, Number(document.getElementById('pmEstMinutes').value) || 30);
+
+          if (!name) {
+            showToast('⚠️ 請填寫 Project 名稱！');
+            return;
+          }
+
+          const directories = dirsRaw
+            .split(/\r?\n/)
+            .map(s => s.trim())
+            .filter(Boolean);
+
+          const isQueue = targetToolVal === 'QUEUE';
+          const now = nowTs();
+
+          // 若揀咗某個正在煮緊嘢嘅爐頭，先檢查會唔會撞鑊
+          if (!isQueue) {
+            const conflict = state.db.projects.find(p => p.toolId === targetToolVal && p.id !== id && (p.status === 'running' || p.status === 'review' || p.status === 'paused'));
+            if (conflict) {
+              const ok = confirm(`「${conflict.name}」目前仲霸緊呢個爐頭！\n你想將舊嗰個退返去「備料待煮區」，定係取消？\n（撳「確定」會將舊 Project 移去備料區並換新餸落鍋）`);
+              if (!ok) return;
+              const elapsed = conflict.status === 'running' ? (now - (conflict.currentRunStartedAt || conflict.startedAt)) / 60000 : 0;
+              conflict.accumulatedMinutes = Math.round((conflict.accumulatedMinutes || 0) + elapsed);
+              conflict.status = 'queued';
+              conflict.preferredToolId = targetToolVal;
+              conflict.toolId = null;
+            }
+          }
+
+          const toolObj = isQueue ? null : state.db.tools.find(t => t.id === targetToolVal);
+          if (toolObj) toolObj.cooldownUntil = null;
+
+          if (id) {
+            const p = state.db.projects.find(x => x.id === id);
+            if (p) {
+              const wasQueued = p.status === 'queued' || !p.toolId;
+              p.name = name;
+              p.directories = directories;
+              p.progressNote = progress;
+              p.cookMode = cookMode;
+              p.estimatedMinutes = estMins;
+              p.isSample = false;
+
+              if (isQueue) {
+                p.status = 'queued';
+                p.toolId = null;
+              } else {
+                p.toolId = targetToolVal;
+                if (wasQueued || p.status === 'completed') {
+                  p.status = 'running';
+                  p.currentRunStartedAt = now;
+                  if (!p.startedAt) p.startedAt = now;
+                  addLog('start', toolObj, p, 0, '從備料區落鍋開火');
+                }
+              }
+            }
+          } else {
+            const newProj = {
+              id: 'proj_' + now + '_' + Math.random().toString(36).slice(2, 6),
+              name,
+              toolId: isQueue ? null : targetToolVal,
+              preferredToolId: isQueue ? null : targetToolVal,
+              status: isQueue ? 'queued' : 'running',
+              directories,
+              progressNote: progress,
+              cookMode,
+              estimatedMinutes: estMins,
+              startedAt: now,
+              currentRunStartedAt: isQueue ? null : now,
+              accumulatedMinutes: 0,
+              completedAt: null,
+              qaChecklist: { refined: false, verified: false, deployed: false },
+              feedbackCount: 0,
+              feedbackLogs: [],
+              isSample: false
+            };
+            state.db.projects.push(newProj);
+            addLog(isQueue ? 'queue' : 'start', toolObj, newProj, 0, isQueue ? '加入備料區' : '新落鍋開火');
+          }
+
+          this.closeModal('projectModal');
+          persistState();
+          renderAll();
+          showToast(isQueue ? '🧺 已放入備料待煮區！' : `🔥 已落鍋開火：${name}`);
+        },
+        assignQueuedToStove(projId, toolId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          const tool = state.db.tools.find(t => t.id === toolId);
+          if (!p || !tool) return;
+          const now = nowTs();
+          p.toolId = toolId;
+          p.status = 'running';
+          p.startedAt = p.startedAt || now;
+          p.currentRunStartedAt = now;
+          p.isSample = false;
+          tool.cooldownUntil = null;
+          addLog('start', tool, p, 0, '從備料區直接落鍋');
+          persistState();
+          renderAll();
+          showToast(`🔥 已將「${p.name}」擺落 ${tool.name} 開火！`);
+        },
+        quickSaveProgress(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          const input = document.getElementById('prog_in_' + projId);
+          if (!p || !input) return;
+          p.progressNote = input.value.trim();
+          p.isSample = false;
+          const tool = state.db.tools.find(t => t.id === p.toolId);
+          addLog('progress_update', tool, p, 0, p.progressNote);
+          persistState();
+          showToast('💬 已更新進度並儲存到 Database！');
+        },
+        toggleQaCheck(projId, key, checked) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          if (!p.qaChecklist) p.qaChecklist = { refined: false, verified: false, deployed: false };
+          p.qaChecklist[key] = !!checked;
+          p.isSample = false;
+          persistState();
+          renderAll();
+        },
+        moveToReview(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          const now = nowTs();
+          if (p.status === 'running') {
+            const elapsed = (now - (p.currentRunStartedAt || p.startedAt)) / 60000;
+            p.accumulatedMinutes = Math.max(1, Math.round((p.accumulatedMinutes || 0) + elapsed));
+          }
+          p.status = 'review';
+          p.isSample = false;
+          const tool = state.db.tools.find(t => t.id === p.toolId);
+          addLog('ready_for_qa', tool, p, p.accumulatedMinutes, '進入修整、驗證及 Deploy 階段');
+          persistState();
+          renderAll();
+          showToast('👨‍🍳 已轉為「待修整・驗證・Deploy」！試下 Work 唔 Work');
+        },
+        openFeedbackModal(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          document.getElementById('fmProjectId').value = p.id;
+          document.getElementById('fmNote').value = '';
+          document.getElementById('fmProgress').value = p.progressNote || '';
+          document.getElementById('fmMinutes').value = Math.min(45, p.estimatedMinutes || 25);
+          document.getElementById('feedbackModal').classList.add('open');
+        },
+        submitFeedbackRework() {
+          const projId = document.getElementById('fmProjectId').value;
+          const note = document.getElementById('fmNote').value.trim() || '測試未如理想，畀 Feedback 回鍋執靚啲';
+          const progress = document.getElementById('fmProgress').value.trim();
+          const mins = Math.max(1, Number(document.getElementById('fmMinutes').value) || 25);
+
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          const now = nowTs();
+          if (p.status === 'running') {
+            const elapsed = (now - (p.currentRunStartedAt || p.startedAt)) / 60000;
+            p.accumulatedMinutes = Math.round((p.accumulatedMinutes || 0) + elapsed);
+          }
+          p.feedbackCount = (p.feedbackCount || 0) + 1;
+          if (!Array.isArray(p.feedbackLogs)) p.feedbackLogs = [];
+          p.feedbackLogs.push({ at: now, note });
+          if (progress) p.progressNote = progress;
+          p.estimatedMinutes = mins;
+          p.status = 'running';
+          p.currentRunStartedAt = now;
+          p.qaChecklist = { refined: false, verified: false, deployed: false };
+          p.isSample = false;
+
+          const tool = state.db.tools.find(t => t.id === p.toolId);
+          addLog('feedback_rework', tool, p, 0, note);
+          this.closeModal('feedbackModal');
+          persistState();
+          renderAll();
+          showToast(`🔄 已記錄第 ${p.feedbackCount} 次回鍋 Feedback，爐頭重新計時開火！`);
+        },
+        completeProject(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          const qa = p.qaChecklist || {};
+          if (!qa.verified || !qa.deployed) {
+            const proceed = confirm('提醒：「本地驗證」或「Deploy 確認 Work」仲未剔齊喎！\n確定已經試過 Work 並完成上菜釋放爐頭嗎？');
+            if (!proceed) return;
+          }
+          const now = nowTs();
+          if (p.status === 'running') {
+            const elapsed = (now - (p.currentRunStartedAt || p.startedAt)) / 60000;
+            p.accumulatedMinutes = Math.max(1, Math.round((p.accumulatedMinutes || 0) + elapsed));
+          } else if (!p.accumulatedMinutes) {
+            p.accumulatedMinutes = Math.max(1, Math.round((now - (p.startedAt || now)) / 60000));
+          }
+          p.qaChecklist = { refined: true, verified: true, deployed: true };
+          p.status = 'completed';
+          p.completedAt = now;
+          p.isSample = false;
+
+          const tool = state.db.tools.find(t => t.id === p.toolId);
+          if (tool) tool.lastActiveEndedAt = now;
+          addLog('complete', tool, p, p.accumulatedMinutes, '驗證及 Deploy 成功，完成上菜');
+
+          persistState();
+          renderAll();
+          showToast(`✅ 恭喜！「${p.name}」已完成上菜，${tool ? tool.name : '爐頭'} 已釋放可接新任務！`);
+        },
+        reopenProject(projId) {
+          const p = state.db.projects.find(x => x.id === projId);
+          if (!p) return;
+          p.status = 'queued';
+          p.completedAt = null;
+          persistState();
+          this.openEditProjectModal(projId);
+        },
+        deleteProject(projId) {
+          if (!confirm('確定要刪除呢個 Project 紀錄嗎？')) return;
+          state.db.projects = state.db.projects.filter(p => p.id !== projId);
+          persistState();
+          renderAll();
+          showToast('🗑️ 已刪除 Project');
+        },
+        clearSampleProjects() {
+          state.db.projects = state.db.projects.filter(p => !p.isSample);
+          state.db.logs = state.db.logs.filter(l => !String(l.id).startsWith('log_sample_'));
+          persistState();
+          renderAll();
+          showToast('🧹 已清空所有範例項目，可以正式擺你嘅真實 Project 落鍋！');
+        },
+        promptUpdateQuota(toolId) {
+          const t = state.db.tools.find(x => x.id === toolId);
+          if (!t) return;
+          const val = prompt(`更新「${t.name}」目前已用算力 / Quota 百分比 (0 - 100)：\n（方便睇住仲有幾多 Entitled 額度可以用盡！）`, t.quotaUsedPct || 0);
+          if (val === null) return;
+          const num = Math.min(100, Math.max(0, Math.round(Number(val) || 0)));
+          t.quotaUsedPct = num;
+          persistState();
+          renderAll();
+          showToast(`📊 已更新 ${t.name} 已用配額為 ${num}%`);
+        },
+        setCooldown(toolId) {
+          const t = state.db.tools.find(x => x.id === toolId);
+          if (!t) return;
+          const hrs = prompt(`「${t.name}」暫時用爆咗本輪額度？\n請輸入預計幾多個鐘頭之後重置（例如 3）：`, '3');
+          if (hrs === null) return;
+          const h = Math.max(0.2, Number(hrs) || 3);
+          t.cooldownUntil = nowTs() + h * 3600 * 1000;
+          t.quotaUsedPct = 100;
+          persistState();
+          renderAll();
+          showToast(`❄️ 已標記 ${t.name} 冷卻 ${h} 小時`);
+        },
+        clearCooldown(toolId) {
+          const t = state.db.tools.find(x => x.id === toolId);
+          if (!t) return;
+          t.cooldownUntil = null;
+          if (t.quotaUsedPct === 100) t.quotaUsedPct = 0;
+          t.lastActiveEndedAt = nowTs();
+          persistState();
+          renderAll();
+          showToast(`🔥 ${t.name} 已恢復閒置可用狀態！`);
+        },
+        openNewToolModal() {
+          document.getElementById('toolModalTitle').textContent = '🛠️ 新增 AI 訂閱工具（加新爐頭）';
+          document.getElementById('tmId').value = '';
+          document.getElementById('tmIcon').value = '🤖';
+          document.getElementById('tmName').value = '';
+          document.getElementById('tmWorkflow').value = '';
+          document.getElementById('tmCost').value = 150;
+          document.getElementById('tmQuota').value = 0;
+          document.getElementById('tmResetNote').value = '每月 / 滾動視窗重置';
+          document.getElementById('toolModal').classList.add('open');
+        },
+        openEditToolModal(toolId) {
+          const t = state.db.tools.find(x => x.id === toolId);
+          if (!t) return;
+          document.getElementById('toolModalTitle').textContent = '✏️ 編輯 AI 訂閱工具';
+          document.getElementById('tmId').value = t.id;
+          document.getElementById('tmIcon').value = t.icon || '🤖';
+          document.getElementById('tmName').value = t.name || '';
+          document.getElementById('tmWorkflow').value = t.workflow || '';
+          document.getElementById('tmCost').value = t.monthlyCostHKD || 0;
+          document.getElementById('tmQuota').value = t.quotaUsedPct || 0;
+          document.getElementById('tmResetNote').value = t.quotaResetLabel || '';
+          document.getElementById('toolModal').classList.add('open');
+        },
+        saveToolModal() {
+          const id = document.getElementById('tmId').value;
+          const icon = document.getElementById('tmIcon').value.trim() || '🤖';
+          const name = document.getElementById('tmName').value.trim();
+          const workflow = document.getElementById('tmWorkflow').value.trim();
+          const cost = Math.max(0, Number(document.getElementById('tmCost').value) || 0);
+          const quota = Math.min(100, Math.max(0, Number(document.getElementById('tmQuota').value) || 0));
+          const resetNote = document.getElementById('tmResetNote').value.trim();
+
+          if (!name) {
+            showToast('⚠️ 請輸入工具名稱');
+            return;
+          }
+
+          if (id) {
+            const t = state.db.tools.find(x => x.id === id);
+            if (t) {
+              t.icon = icon;
+              t.name = name;
+              t.workflow = workflow;
+              t.monthlyCostHKD = cost;
+              t.quotaUsedPct = quota;
+              t.quotaResetLabel = resetNote;
+            }
+          } else {
+            state.db.tools.push({
+              id: 'tool_' + nowTs() + '_' + Math.random().toString(36).slice(2, 5),
+              name,
+              icon,
+              workflow,
+              monthlyCostHKD: cost,
+              quotaUsedPct: quota,
+              quotaResetLabel: resetNote,
+              cooldownUntil: null,
+              lastActiveEndedAt: nowTs(),
+              archived: false,
+              order: state.db.tools.length + 1
+            });
+          }
+
+          this.closeModal('toolModal');
+          persistState();
+          renderAll();
+          showToast(`✅ 已儲存工具：${name}`);
+        },
+        toggleArchiveTool(toolId) {
+          const t = state.db.tools.find(x => x.id === toolId);
+          if (!t) return;
+          t.archived = !t.archived;
+          persistState();
+          renderAll();
+          showToast(t.archived ? `📦 已封存 ${t.name}（歷史數據已保留供分析）` : `♻️ 已重新啟用 ${t.name}`);
+        },
+        deleteTool(toolId) {
+          const t = state.db.tools.find(x => x.id === toolId);
+          if (!t) return;
+          if (!confirm(`確定要徹底刪除「${t.name}」嗎？\n（如果只想退訂但保留過往統計數據，建議用「退訂封存」功能）`)) return;
+          state.db.tools = state.db.tools.filter(x => x.id !== toolId);
+          state.db.projects.forEach(p => {
+            if (p.toolId === toolId && p.status !== 'completed') {
+              p.status = 'queued';
+              p.toolId = null;
+            }
+          });
+          persistState();
+          renderAll();
+          showToast(`🗑️ 已刪除工具：${t.name}`);
+        },
+        setProjSearch(val) {
+          state.projSearch = val;
+          refreshProjectsTableOnly();
+        },
+        setProjFilterStatus(val) {
+          state.projFilterStatus = val;
+          refreshProjectsTableOnly();
+        },
+        setProjFilterTool(val) {
+          state.projFilterTool = val;
+          refreshProjectsTableOnly();
+        },
+        setAnalyticsDays(val) {
+          state.prefs.analyticsDays = Number(val);
+          savePrefs();
+          renderAnalyticsTab(document.getElementById('mainView'));
+        },
+        exportCSV() {
+          const rows = [
+            ['Project名稱', '使用AI工具', '狀態', '相關File_Directories', '一句講進度', '預計分鐘', '實際累計分鐘', '回鍋Feedback次數', '開始時間', '完成時間']
+          ];
+          state.db.projects.forEach(p => {
+            const t = state.db.tools.find(x => x.id === (p.toolId || p.preferredToolId));
+            rows.push([
+              p.name || '',
+              t ? t.name : '未指定',
+              p.status || '',
+              (p.directories || []).join(' ; '),
+              p.progressNote || '',
+              p.estimatedMinutes || 0,
+              p.accumulatedMinutes || 0,
+              p.feedbackCount || 0,
+              formatDateTime(p.startedAt),
+              formatDateTime(p.completedAt)
+            ]);
+          });
+          const csvContent = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `AI生產線報表_${new Date().toISOString().slice(0,10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('📊 已匯出 CSV 報表（可直接用 Excel 打開）');
+        },
+        exportJSONBackup() {
+          const blob = new Blob([JSON.stringify(state.db, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `AI生產線完整備份_${new Date().toISOString().slice(0,10)}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('💾 已下載完整 JSON 資料庫備份');
+        },
+        importJSONBackup(event) {
+          const file = event.target.files && event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const parsed = JSON.parse(e.target.result);
+              if (!parsed || !Array.isArray(parsed.tools) || !Array.isArray(parsed.projects)) {
+                showToast('⚠️ 備份檔案格式唔正確');
+                return;
+              }
+              state.db = {
+                tools: parsed.tools,
+                projects: parsed.projects,
+                logs: parsed.logs || []
+              };
+              persistState();
+              renderAll();
+              showToast('✅ 成功匯入資料庫備份並已同步！');
+            } catch (err) {
+              showToast('⚠️ 讀取 JSON 失敗');
+            }
+          };
+          reader.readAsText(file);
+        },
+        saveCloudSetup() {
+          const email = document.getElementById('cfgOwnerEmail').value.trim();
+          const raw = document.getElementById('cfgFirebaseRaw').value;
+          const parsedCfg = parseFirebaseConfigInput(raw);
+          if (!parsedCfg) {
+            showToast('⚠️ 無法識別 firebaseConfig！請確認成段貼入包含 apiKey 同 projectId 嘅內容');
+            return false;
+          }
+          state.cloudCfg = { firebaseConfig: parsedCfg, ownerEmail: email };
+          localStorage.setItem(STORAGE_KEY_CLOUD, JSON.stringify(state.cloudCfg));
+          state.bypassAuthLock = false;
+          showToast('✅ 已儲存雲端設定！');
+          renderAll();
+          initFirebaseIfConfigured();
+          return true;
+        },
+        exportConfiguredHtml() {
+          const emailEl = document.getElementById('cfgOwnerEmail');
+          const rawEl = document.getElementById('cfgFirebaseRaw');
+          if (emailEl && rawEl && rawEl.value.trim()) {
+            const parsed = parseFirebaseConfigInput(rawEl.value);
+            if (!parsed) {
+              showToast('⚠️ 請先貼上正確嘅 firebaseConfig 先再匯出檔案！');
+              return;
+            }
+            state.cloudCfg = { firebaseConfig: parsed, ownerEmail: emailEl.value.trim() };
+            localStorage.setItem(STORAGE_KEY_CLOUD, JSON.stringify(state.cloudCfg));
+          }
+
+          if (!state.cloudCfg || !state.cloudCfg.firebaseConfig) {
+            showToast('⚠️ 請先喺第 2 步貼上 Firebase 設定！');
+            return;
+          }
+
+          const safeJson = JSON.stringify(state.cloudCfg)
+            .replace(/</g, '\\u003c')
+            .replace(/>/g, '\\u003e');
+          const exportRoot = CLEAN_ROOT_CLONE.cloneNode(true);
+          const cfgSlot = exportRoot.querySelector('#embedded-cloud-config');
+          if (cfgSlot) {
+            cfgSlot.textContent = safeJson;
+          }
+          const mainEl = exportRoot.querySelector('#mainView');
+          if (mainEl) mainEl.innerHTML = '';
+          const statsEl = exportRoot.querySelector('#headerStats');
+          if (statsEl) statsEl.innerHTML = '';
+          const toastEl = exportRoot.querySelector('#toastContainer');
+          if (toastEl) toastEl.innerHTML = '';
+          const gateEl = exportRoot.querySelector('#authGate');
+          if (gateEl) gateEl.classList.remove('active');
+          const updatedHtml = '<!DOCTYPE html>\n' + exportRoot.outerHTML;
+
+          const blob = new Blob([updatedHtml], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'index.html';
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('📦 已下載 index.html！直接 Upload 上你嘅 GitHub Repository 就用得！');
+        },
+        updateRulesPreview(val) {
+          const email = (val || '').trim() || '請先在上方填寫你的Gmail@gmail.com';
+          const block = document.getElementById('rulesBlock');
+          if (block) {
+            block.textContent = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{userId}/{document=**} {\n      allow read, write: if request.auth != null && request.auth.token.email == "${email}";\n    }\n  }\n}`;
+          }
+        },
+        copyFirestoreRules() {
+          const emailEl = document.getElementById('cfgOwnerEmail');
+          const email = (emailEl ? emailEl.value.trim() : state.cloudCfg.ownerEmail) || '請填入你的Email@gmail.com';
+          const rules = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{userId}/{document=**} {\n      allow read, write: if request.auth != null && request.auth.token.email == "${email}";\n    }\n  }\n}`;
+          this.copyText(rules);
+        },
+        clearCloudSetup() {
+          if (!confirm('確定要清除瀏覽器儲存嘅雲端連線設定並切換回純本地模式嗎？')) return;
+          localStorage.removeItem(STORAGE_KEY_CLOUD);
+          state.cloudCfg = { firebaseConfig: null, ownerEmail: '' };
+          state.cloudConnected = false;
+          state.currentUser = null;
+          document.getElementById('authGate').classList.remove('active');
+          renderAll();
+          showToast('💻 已切換回本地模式');
+        },
+        bypassToSetup() {
+          state.bypassAuthLock = true;
+          document.getElementById('authGate').classList.remove('active');
+          state.activeTab = 'cloud';
+          renderAll();
+        },
+        async signInWithGoogle() {
+          if (!state.auth || !state.fbModules) {
+            await initFirebaseIfConfigured();
+          }
+          if (!state.auth || !state.fbModules) {
+            showToast('⚠️ 請先完成雲端設定，並確認透過 GitHub Pages 網址開啟');
+            return;
+          }
+          const errBox = document.getElementById('authErrorMsg');
+          errBox.style.display = 'none';
+          try {
+            await state.fbModules.signInWithPopup(state.auth, state.googleProvider);
+          } catch (err) {
+            console.error(err);
+            errBox.style.display = 'block';
+            if (err.code === 'auth/unauthorized-domain') {
+              errBox.innerHTML = `⚠️ <strong>網域未授權：</strong>請去 Firebase Console → Authentication → Settings → Authorized domains 加入 <code>${escapeHtml(window.location.hostname)}</code>`;
+            } else if (err.code === 'auth/popup-blocked') {
+              await state.fbModules.signInWithRedirect(state.auth, state.googleProvider);
+            } else {
+              errBox.textContent = '登入失敗：' + (err.message || err.code);
+            }
+          }
+        },
+        async signOutGoogle() {
+          if (state.auth && state.fbModules) {
+            await state.fbModules.signOut(state.auth);
+            showToast('👋 已登出 Google 帳號');
+          }
+        }
+      };
+
+      // 啟動渲染及檢查雲端狀態
+      renderAll();
+      initFirebaseIfConfigured();
+    })();
+  </script></body></html>
